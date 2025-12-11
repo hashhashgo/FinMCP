@@ -1,0 +1,39 @@
+[project]
+name = "finmcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "blinker<1.8.0",
+    "brotli>=1.2.0",
+    "dotenv>=0.9.9",
+    "efinance>=0.5.5.2",
+    "fastmcp>=2.13.3",
+    "langchain-mcp-adapters>=0.2.1",
+    "lxml>=6.0.2",
+    "numpy>=2.3.5",
+    "pandas>=2.3.3",
+    "selenium-wire>=5.1.0",
+    "setuptools>=80.9.0",
+    "tushare>=1.4.24",
+    "yfinance>=0.2.66",
+]
+
+[project.entry-points.'finmcp.services']
+fin_history = "finmcp.agent_tools.tool_fin_history:mcp"
+alpha_vantage_news = "finmcp.agent_tools.tool_alphavantage_news:mcp"
+jina_search = "finmcp.agent_tools.tool_jina_search:mcp"
+
+[dependency-groups]
+dev = [
+    "finmcp",
+]
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[tool.uv.sources]
+finmcp = { workspace = true, editable = true }
