@@ -1,6 +1,7 @@
 import os
 import socket
 import json
+import time
 
 from langchain_mcp_adapters.sessions import Connection, StreamableHttpConnection
 from fastmcp import FastMCP
@@ -96,14 +97,17 @@ def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) ->
             url = MCP_CONNECTIONS[mcp_service].get("url", None)
             assert url is not None, f"MCP service {mcp_service} is not a HTTP service."
             if retry_counts[mcp_service] == -1: continue
+            time_start = time.time()
             try:
-                client = PingClient(url)
+                client = PingClient(url, timeout=test_timeout)
                 client.ping_connection()
                 client.disconnect()
                 retry_counts[mcp_service] = -1
             except Exception:
                 all_running = False
                 retry_counts[mcp_service] += 1
+                while time.time() - time_start < test_timeout:
+                    time.sleep(0.1)
             if retry_counts[mcp_service] > test_max_retries:
                 raise RuntimeError(f"MCP service {mcp_service} failed to connect after {test_max_retries} retries.")
         if all_running:
@@ -111,17 +115,22 @@ def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) ->
     print("All MCP services are up and running.")
 
 def close_all_services() -> None:
+    if not MCP_PROCESSES: return
     print("Closing all MCP services...")
     for mcp_service, process in MCP_PROCESSES.items():
         print(f"Terminating MCP service: {mcp_service}")
         try:
             process.terminate()
             process.join()
+            del MCP_CONNECTIONS[mcp_service]
+            with open("agent_tools_service_ports.json", "w") as f:
+                json.dump(MCP_CONNECTIONS, f, indent=4)
         except Exception as e:
             print(f"Error terminating MCP service {mcp_service}: {e}")
     MCP_PROCESSES.clear()
     MCP_CONNECTIONS.clear()
     print("All MCP services have been closed.")
-    os.remove("agent_tools_service_ports.json")
+    if not json.load(open("agent_tools_service_ports.json")):
+        os.remove("agent_tools_service_ports.json")
 
 __all__ = ["MCP_SERVICES", "MCP_CONNECTIONS", "start_all_services", "close_all_services"]

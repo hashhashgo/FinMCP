@@ -72,6 +72,11 @@ class InvestingComDataSource(DataSource):
             data = self.load_data(name=symbol, type="currencies", freq=ic_freq)
         else:
             raise NotImplementedError(f"DataType {type} not supported in Investing.com data source")
+        start_date = self._parse_datetime(start)
+        end_date = self._parse_datetime(end)
+        if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():
+            end_date = end_date + self._datetime_shift_base(freq)
+        data = pd.DataFrame(data[(data["date"] >= start_date) & (data["date"] <= end_date)])
         return self._format_dataframe(data)
 
     def subscribe(self, symbol: str, interval: str, callback: Callable) -> None:

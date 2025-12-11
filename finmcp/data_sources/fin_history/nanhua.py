@@ -38,7 +38,7 @@ class NanHuaDataSource(DataSource):
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
         if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():
-            end_date = start_date + self._datetime_shift_base(freq)
+            end_date = end_date + self._datetime_shift_base(freq)
         df = pd.DataFrame(df[(df["date"] >= start_date) & (df["date"] <= end_date)])
         return self._format_dataframe(df)
 

@@ -38,7 +38,7 @@ class YahooFinanceDataSource(DataSource):
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
         if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():
-            end_date = start_date + self._datetime_shift_base(freq)
+            end_date = end_date + self._datetime_shift_base(freq)
         ticker = yf.Ticker(symbol)
         df = ticker.history(start=start_date, end=end_date, interval=yf_freq)
         df = df.reset_index()
