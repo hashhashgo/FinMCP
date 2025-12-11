@@ -3,7 +3,7 @@ name = "finmcp"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "blinker<1.8.0",
     "brotli>=1.2.0",
@@ -12,7 +12,7 @@ dependencies = [
     "fastmcp>=2.13.3",
     "langchain-mcp-adapters>=0.2.1",
     "lxml>=6.0.2",
-    "numpy>=2.3.5",
+    "numpy>=2.2.6",
     "pandas>=2.3.3",
     "selenium-wire>=5.1.0",
     "setuptools>=80.9.0",
