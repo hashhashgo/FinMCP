@@ -12,15 +12,17 @@ from typing import Dict, List, Tuple
 from .ping_client import PingClient
 
 
+CONNECTION_RECORD_FILE = os.getenv("CONNECTION_RECORD_FILE", "agent_tools_service_ports.json")
+
 ENTRYPOINT_GROUP = "finmcp.services"
-MCP_HOST = os.environ.get("MCP_HUB_HOST", "127.0.0.1")
+MCP_HOST = os.environ.get("FINMCP_HOST", "127.0.0.1")
 MCP_PATH = "/mcp"
 
 
 MCP_SERVICES: Dict[str, FastMCP] = {}
 MCP_CONNECTIONS: Dict[str, Connection] = \
-    json.load(open("agent_tools_service_ports.json", "r")) \
-        if os.path.exists("agent_tools_service_ports.json") else {}
+    json.load(open(CONNECTION_RECORD_FILE, "r")) \
+        if os.path.exists(CONNECTION_RECORD_FILE) else {}
 MCP_PROCESSES: Dict[str, Process] = {}
 
 
@@ -61,6 +63,14 @@ def _run_service(mcp_service: str, port: int) -> None:
 
 def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, test_timeout: int = 1) -> None:
     global MCP_CONNECTIONS
+    if MCP_PROCESSES:
+        print("MCP services are already running.")
+        check_services_running(test_max_retries, test_timeout)
+        return
+    if MCP_CONNECTIONS:
+        print("MCP services connections already exist. Assuming services are running.")
+        check_services_running(test_max_retries, test_timeout)
+        return
     if os.getenv("START_SERVICES_INTERNAL", "false").lower() == "true" or start_anyway:
         print("Starting MCP services...")
         current_port = 8000
@@ -69,7 +79,7 @@ def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, t
             while current_port < 9000:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     try:
-                        s.bind(("127.0.0.1", current_port))
+                        s.bind((MCP_HOST, current_port))
                         break
                     except OSError:
                         print(f"Port {current_port} is in use, trying next port...")
@@ -79,11 +89,11 @@ def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, t
             MCP_PROCESSES[mcp_service].start()
             MCP_CONNECTIONS[mcp_service] = StreamableHttpConnection(
                 transport="streamable_http",
-                url=f"http://127.0.0.1:{current_port}/mcp",
+                url=f"http://{MCP_HOST}:{current_port}/mcp",
             )
             print(f"MCP service {mcp_service} is running on port {current_port}")
             current_port += 1
-        with open("agent_tools_service_ports.json", "w") as f:
+        with open(CONNECTION_RECORD_FILE, "w") as f:
             json.dump(MCP_CONNECTIONS, f, indent=4)
     else:
         print("Skipping MCP services startup as per configuration.")
@@ -115,7 +125,9 @@ def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) ->
     print("All MCP services are up and running.")
 
 def close_all_services() -> None:
-    if not MCP_PROCESSES: return
+    if not MCP_PROCESSES:
+        MCP_CONNECTIONS.clear()
+        return
     print("Closing all MCP services...")
     for mcp_service, process in MCP_PROCESSES.items():
         print(f"Terminating MCP service: {mcp_service}")
@@ -123,14 +135,14 @@ def close_all_services() -> None:
             process.terminate()
             process.join()
             del MCP_CONNECTIONS[mcp_service]
-            with open("agent_tools_service_ports.json", "w") as f:
+            with open(CONNECTION_RECORD_FILE, "w") as f:
                 json.dump(MCP_CONNECTIONS, f, indent=4)
         except Exception as e:
             print(f"Error terminating MCP service {mcp_service}: {e}")
     MCP_PROCESSES.clear()
     MCP_CONNECTIONS.clear()
     print("All MCP services have been closed.")
-    if not json.load(open("agent_tools_service_ports.json")):
-        os.remove("agent_tools_service_ports.json")
+    if not json.load(open(CONNECTION_RECORD_FILE)):
+        os.remove(CONNECTION_RECORD_FILE)
 
 __all__ = ["MCP_SERVICES", "MCP_CONNECTIONS", "start_all_services", "close_all_services"]
