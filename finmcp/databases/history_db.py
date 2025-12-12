@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from contextlib import contextmanager
 import os
@@ -27,7 +28,17 @@ def _python_type_to_sqlite_type(py_type: str) -> str:
     elif py_type == "datetime":
         return "INTEGER"
     else:
-        return "BLOB"     # 默认当作 BLOB
+        return "TEXT"     # 默认当作 BLOB
+
+def _python_value_to_sqlite_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return _datetime_to_timestamp(value)
+    elif isinstance(value, bool):
+        return int(value)
+    elif isinstance(value, (int, float, str)):
+        return value
+    else:
+        return str(value)
 
 def _pandas_dtype_to_sqlite_type(dtype: pd.api.extensions.ExtensionDtype) -> str:
     if pd.api.types.is_integer_dtype(dtype):
@@ -48,8 +59,14 @@ def _datetime_to_timestamp(dt: datetime) -> int:
     return int(dt.timestamp() * 1000000)
 
 def _get_table_name(base: str, common_fields: Fields) -> str:
-    hashed_name = sha1(("-".join(common_fields.keys())).encode()).hexdigest()
+    hashed_name = sha1(("-".join([str(v) for v in common_fields.values()])).encode()).hexdigest()
     return f"{base}_{hashed_name}"
+
+def _json_serialize(obj: Any) -> str:
+    try:
+        return json.dumps(obj)
+    except TypeError:
+        return str(obj)
 
 def _pandas_value_to_sqlite_value(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
@@ -57,6 +74,8 @@ def _pandas_value_to_sqlite_value(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = df[col].astype('int64') // 1000
         elif pd.api.types.is_bool_dtype(df[col]):
             df[col] = df[col].astype(int)
+        elif df[col].dtype == 'object':
+            df[col] = df[col].map(_json_serialize).astype("string")
     return df
 
 def _sqlite_value_to_pandas_value(df: pd.DataFrame, type_dict: Dict[str, str]) -> pd.DataFrame:
@@ -145,7 +164,7 @@ class IntervalDB(BaseDB):
                     AND end_ts   >= ?
                     AND start_ts <= ?
                 ORDER BY start_ts
-            """, (*key_fields.values(), start_ts, end_ts))
+            """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], start_ts, end_ts))
             rows = cur.fetchall()
 
             # 2. 和这些区间做并集，合并成一个大区间 [S, E)
@@ -169,7 +188,7 @@ class IntervalDB(BaseDB):
             cur.execute(f"""
                 INSERT INTO {table_name}({", ".join(key_fields.keys())}, start_ts, end_ts)
                 VALUES ({", ".join(["?"] * (len(key_fields) + 2))})
-            """, (*key_fields.values(), S, E))
+            """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], S, E))
 
     # ------------------- 读缓存：查缺失区间 -------------------
 
@@ -203,7 +222,7 @@ class IntervalDB(BaseDB):
                 AND end_ts   > ?
                 AND start_ts < ?
             ORDER BY start_ts
-        """, (*key_fields.values(), start_ts, end_ts))
+        """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], start_ts, end_ts))
         intervals = cur.fetchall()
 
         res: List[Tuple[datetime, datetime]] = []
@@ -250,7 +269,7 @@ class IntervalDB(BaseDB):
             WHERE
                 {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
             ORDER BY start_ts
-        """, (*key_fields.values(),))
+        """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()],))
 
         intervals = cur.fetchall()
 
@@ -272,7 +291,7 @@ class HistoryDB(BaseDB):
         self._interval_db = IntervalDB(table_basename, db_path)
         self.tables = {}
     
-    def history(self, key_fields: Fields = {}, common_fields: Fields = {},
+    def history(self, key_fields: Fields = {}, common_fields: Fields = {}, except_fields: Fields = {},
                 start: datetime = datetime.fromtimestamp(0),
                 end: datetime = datetime.now(),
                 callback: Optional[Callable[..., pd.DataFrame]] = None,
@@ -300,6 +319,7 @@ class HistoryDB(BaseDB):
             arguments: Dict[str, Any] = {}
             arguments.update(key_fields)
             arguments.update(common_fields)
+            arguments.update(except_fields)
             arguments.update({"start": missing[0][0], "end": missing[-1][1]})
             if field_map is not None:
                 call_args = {}
@@ -311,13 +331,14 @@ class HistoryDB(BaseDB):
                 self._insert_data(data, key_fields=key_fields, common_fields=common_fields)
                 self._interval_db.add_interval(key_fields=key_fields, common_fields=common_fields,
                                                start=missing[0][0], end=missing[-1][1])
-        else:
+        elif len(missing) > 0:
             for (ms, me) in missing:
                 logging.debug(f"[HistoryDB]: 发现表 {table_name} 中缺失区间 [{ms} - {me})，采用分块下载。")
                 assert callback is not None, "需要提供 callback 函数以下载缺失数据"
                 arguments: Dict[str, Any] = {}
                 arguments.update(key_fields)
                 arguments.update(common_fields)
+                arguments.update(except_fields)
                 arguments.update({"start": ms, "end": me})
                 if field_map is not None:
                     call_args = {}
@@ -333,15 +354,20 @@ class HistoryDB(BaseDB):
 
         # 最后，返回完整数据
         cur = self.connection.cursor()
+        if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
+        if not self.tables.get(table_name): return pd.DataFrame([])  # 表不存在，且本次也没数据，直接返回空表
         cur.execute(f"""
             SELECT * FROM {table_name}
             WHERE date >= ? AND date < ?
                 AND {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
             ORDER BY date ASC
-        """, (_datetime_to_timestamp(start), _datetime_to_timestamp(end), *key_fields.values()))
+        """, (_datetime_to_timestamp(start), _datetime_to_timestamp(end), *[_python_value_to_sqlite_value(v) for v in key_fields.values()]))
         rows = cur.fetchall()
         df = pd.DataFrame(rows, columns=rows[0].keys() if rows else [])
-        return _sqlite_value_to_pandas_value(df, type_dict=self._get_table_info(common_fields=common_fields))
+        if not df.empty:
+            return _sqlite_value_to_pandas_value(df, type_dict=self._get_table_info(common_fields=common_fields))
+        else:
+            return df
 
 
     def _insert_data(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields):
@@ -352,7 +378,7 @@ class HistoryDB(BaseDB):
         if table_name not in self.tables:
             self._create_table_from_df(df, key_fields=key_fields, common_fields=common_fields)
         for i, k in enumerate(key_fields.keys()):
-            df.insert(i, k, key_fields[k])
+            df.insert(i, k, _python_value_to_sqlite_value(key_fields[k]))
             if isinstance(key_fields[k], str):
                 df[k] = df[k].astype("string")
         self._check_df(df, key_fields=key_fields, common_fields=common_fields)
@@ -362,12 +388,15 @@ class HistoryDB(BaseDB):
 
         sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns}) VALUES ({placeholders});'
 
+        df = df.where(df.notna(), None)
         df = _pandas_value_to_sqlite_value(df)
         data_tuples = [tuple(row) for row in df.itertuples(index=False)]
 
         cur = self.connection.cursor()
         with self._tx():
-            cur.executemany(sql, data_tuples)
+            for t in data_tuples:
+                cur.execute(sql, t)
+            # cur.executemany(sql, data_tuples)
     
     def _check_df(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields) -> None:
         """
@@ -529,7 +558,7 @@ def history_cache(
         reg_key = f"{func.__module__}:{func.__qualname__}"
         sig = inspect.signature(func)
 
-        table_basename = cfg.table_basename if cfg.table_basename else func.__qualname__
+        table_basename = cfg.table_basename if cfg.table_basename else func.__name__
         if reg_key not in DB_CONNECTIONS:
             DB_CONNECTIONS[reg_key] = HistoryDB(
                 table_basename=table_basename,
@@ -551,10 +580,26 @@ def history_cache(
             start_dt = _parse_datetime(argmap[cfg.start_col])
             end_dt = _parse_datetime(argmap[cfg.end_col])
             
-            common_fields = {}
-            for each in argmap.keys():
-                if each not in cfg.key_fields and each not in cfg.except_fields and each != cfg.start_col and each != cfg.end_col:
-                    common_fields[each] = argmap[each]
+            if not cfg.common_fields:
+                common_fields = {}
+                for each in argmap.keys():
+                    if each not in cfg.key_fields and each not in cfg.except_fields and each != cfg.start_col and each != cfg.end_col and each != "self":
+                        common_fields[each] = argmap[each]
+            else:
+                common_fields = {k: argmap[k] for k in cfg.common_fields if k not in cfg.except_fields}
+
+            if not cfg.except_fields:
+                except_fields = {}
+                for each in argmap.keys():
+                    if each not in cfg.key_fields and each not in common_fields and each != cfg.start_col and each != cfg.end_col and each != "self":
+                        except_fields[each] = argmap[each]
+            else:
+                except_fields = {k: argmap[k] for k in cfg.except_fields}
+
+            if "self" in argmap:
+                func_dec = lambda *args, **fkwargs: func(argmap["self"], *args, **fkwargs)
+            else:
+                func_dec = func
 
             db = DB_CONNECTIONS[reg_key]
             if not isinstance(db, HistoryDB):
@@ -562,9 +607,10 @@ def history_cache(
             return db.history(
                 key_fields={k: argmap[k] for k in cfg.key_fields},
                 common_fields=common_fields,
+                except_fields=except_fields,
                 start=start_dt,
                 end=end_dt,
-                callback=func
+                callback=func_dec
             )
 
         return wrapper

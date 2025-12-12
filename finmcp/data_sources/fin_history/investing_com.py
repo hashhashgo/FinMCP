@@ -1,4 +1,5 @@
 from .base import DataSource, DataType, DataFrequency
+from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
 from typing import Optional, Callable, Union
@@ -12,6 +13,7 @@ import brotli
 from seleniumwire import webdriver
 from seleniumwire.request import Request, Response
 import pandas as pd
+import os
 
 from typing import Optional, Union
 
@@ -56,6 +58,13 @@ class InvestingComDataSource(DataSource):
         self.driver.quit()
     
 
+    @history_cache(
+        table_basename="investing_com",
+        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        key_fields=("symbol", "freq"),
+        common_fields= ("type",),
+        except_fields=(),
+    )
     def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         ic_freq = self._map_frequency(freq)
         if type == DataType.INDEX:

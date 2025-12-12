@@ -1,6 +1,8 @@
 from .base import DataSource, DataType, DataFrequency
+from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
+import os
 from typing import Optional, Callable, Union
 from datetime import datetime, date, timedelta
 
@@ -29,6 +31,13 @@ class NanHuaDataSource(DataSource):
         if cache_file is not None: self.__class__.cache_conn = sqlite3.connect(cache_file)
 
 
+    @history_cache(
+        table_basename=name,
+        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        key_fields=("symbol",),
+        common_fields= ("freq", ),
+        except_fields=("type", ),
+    )
     def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         assert type == DataType.COMMODITY, "NanHuaDataSource only supports commodity data"
         nh_freq = self._map_frequency(freq)

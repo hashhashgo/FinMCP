@@ -1,4 +1,5 @@
 from .base import DataSource, DataType, DataFrequency
+from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
 import os
@@ -28,17 +29,18 @@ class YahooFinanceDataSource(DataSource):
     }
     column_names = ["Date", "Open", "High", "Low", "Close", "Volume"]
 
-
-    def __init__(self, token: Optional[str] = None, cache_file: Optional[str] = None):
-        if cache_file is not None: self.__class__.cache_conn = sqlite3.connect(cache_file)
-
-
-    def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
+    @history_cache(
+        table_basename=name,
+        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        key_fields=("symbol", "freq"),
+        except_fields=("type",)
+    )
+    def history(self, symbol: str, type: DataType = DataType.INDEX, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         yf_freq = self._map_frequency(freq)
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
-        if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():
-            end_date = end_date + self._datetime_shift_base(freq)
+        # if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():
+        #     end_date = end_date + self._datetime_shift_base(freq)
         ticker = yf.Ticker(symbol)
         df = ticker.history(start=start_date, end=end_date, interval=yf_freq)
         df = df.reset_index()

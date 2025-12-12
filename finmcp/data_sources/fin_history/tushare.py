@@ -1,4 +1,5 @@
 from .base import DataSource, DataType, DataFrequency
+from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
 import os
@@ -38,6 +39,13 @@ class TushareDataSource(DataSource):
         if cache_file is not None: self.__class__.cache_conn = sqlite3.connect(cache_file)
 
 
+    @history_cache(
+        table_basename=name,
+        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        key_fields=("symbol",),
+        common_fields=("type", "freq"),
+        except_fields=(),
+    )
     def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         if type == DataType.STOCK: return self._format_dataframe(self._history_stock(symbol, start, end, freq))
         elif type == DataType.INDEX: return self._format_dataframe(self._history_index(symbol, start, end, freq))

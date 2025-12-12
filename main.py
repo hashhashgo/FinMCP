@@ -10,6 +10,7 @@ from finmcp import MCP_CONNECTIONS, start_all_services, close_all_services
 
 import dotenv
 
+
 dotenv.load_dotenv()
 
 
@@ -64,19 +65,20 @@ async def main():
     close_all_services()
 
 if __name__ == "__main__":
-    import yfinance as yf
-    from finmcp.databases.history_db import HistoryDB, history_cache
-    from datetime import datetime
-    db = HistoryDB("yahoo_finance")
-    @history_cache(
-        db_path="history.db",
-        key_fields=("symbol", "interval"),
-    )
-    def yahoo_finance(symbol, interval, start, end):
-        df = yf.Ticker(symbol).history(start=start, end=end, interval=interval).reset_index()
-        return df.rename(columns={k: k.lower() for k in df.columns})
-    data = yahoo_finance("AAPL", "5d", start="20000101", end="20251210")
-    print(data.head())
+    from finmcp.data_sources.fin_history import DATASOURCES, DataType, DataFrequency
+    from datetime import datetime, date
+    tu = DATASOURCES['tushare']()
+    yf = DATASOURCES['yahoo_finance']()
+    ic = DATASOURCES['investing.com']()
+    nh = DATASOURCES['nanhua']()
+    df_tu = tu.history("000001.sh", type=DataType.INDEX, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
+    df_yf = yf.history("AAPL", type=DataType.STOCK, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
+    df_ic = ic.history("usd-cny", type=DataType.FOREX, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
+    df_nh = nh.history("PP_NH", type=DataType.COMMODITY, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
+    print(df_tu)
+    print(df_yf)
+    print(df_ic)
+    print(df_nh)
 
 # if __name__ == "__main__":
 #     asyncio.run(main())
