@@ -63,6 +63,20 @@ async def main():
 
     close_all_services()
 
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    import yfinance as yf
+    from finmcp.databases.history_db import HistoryDB, history_cache
+    from datetime import datetime
+    db = HistoryDB("yahoo_finance")
+    @history_cache(
+        db_path="history.db",
+        key_fields=("symbol", "interval"),
+    )
+    def yahoo_finance(symbol, interval, start, end):
+        df = yf.Ticker(symbol).history(start=start, end=end, interval=interval).reset_index()
+        return df.rename(columns={k: k.lower() for k in df.columns})
+    data = yahoo_finance("AAPL", "5d", start="20000101", end="20251210")
+    print(data.head())
+
+# if __name__ == "__main__":
+#     asyncio.run(main())

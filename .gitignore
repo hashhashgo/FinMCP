@@ -1,6 +1,9 @@
 .env
 .vscode/
 agent_tools_service_ports.json
+*.db
+*.db-shm
+*.db-wal
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
