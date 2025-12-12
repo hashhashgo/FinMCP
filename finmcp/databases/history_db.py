@@ -63,6 +63,8 @@ def _get_table_name(base: str, common_fields: Fields) -> str:
     return f"{base}_{hashed_name}"
 
 def _json_serialize(obj: Any) -> str:
+    if isinstance(obj, str):
+        return obj
     try:
         return json.dumps(obj)
     except TypeError:
@@ -394,9 +396,7 @@ class HistoryDB(BaseDB):
 
         cur = self.connection.cursor()
         with self._tx():
-            for t in data_tuples:
-                cur.execute(sql, t)
-            # cur.executemany(sql, data_tuples)
+            cur.executemany(sql, data_tuples)
     
     def _check_df(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields) -> None:
         """
@@ -408,16 +408,6 @@ class HistoryDB(BaseDB):
             self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         
         assert self.tables[table_name], f"数据库表 {table_name} 不存在，请先创建表。"
-
-        db_cols = set(self.tables[table_name].keys())
-        for each in key_fields.keys():
-            db_cols.add(each)
-        df_cols = set(df.columns.tolist())
-
-        if db_cols != df_cols:
-            raise ValueError(f"DataFrame 列名与数据库表结构不匹配。\n"
-                             f"数据库列名：{db_cols}\n"
-                             f"DataFrame 列名：{df_cols}")
 
         # 检查数据类型
         for col, dtype in df.dtypes.items():
@@ -446,6 +436,7 @@ class HistoryDB(BaseDB):
         primary_keys = ", ".join([f'"{k}"' for k in key_fields.keys()] + ['"date"'])
 
         col_definitions = ",\n".join(cols)
+
         sql = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n{col_definitions},\n PRIMARY KEY ({primary_keys}));'
 
         logging.info("Generated SQL:")
@@ -470,11 +461,20 @@ class HistoryDB(BaseDB):
             PRIMARY KEY (table_name, column_name)
         );
         """)
+        cur.fetchall()
+        cur.execute(f"PRAGMA table_info({table_name});")
+        cols = cur.fetchall()
         for col, dtype in df.dtypes.items():
             cur.execute("""
             INSERT OR REPLACE INTO DataFrame_infos (table_name, column_name, data_type)
             VALUES (?, ?, ?);
             """, (table_name, col, str(dtype)))
+            if col not in [c["name"] for c in cols]:
+                logging.warning(f"Column '{col}' not found in table '{table_name}' during _set_table_info.")
+                cur.execute(f"""
+                ALTER TABLE {table_name}
+                ADD COLUMN "{col}" {_pandas_dtype_to_sqlite_type(dtype)};
+                """)
 
         return self._get_table_info(common_fields=common_fields)
 
