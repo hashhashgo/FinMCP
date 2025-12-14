@@ -4,7 +4,6 @@ from signal import SIGTERM, SIGINT, signal
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
-from langchain_core.tools.base import ToolException
 
 from finmcp import MCP_CONNECTIONS, start_all_services, close_all_services
 
