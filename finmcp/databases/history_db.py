@@ -421,7 +421,7 @@ class HistoryDB(BaseDB):
             if db_type is None:
                 raise ValueError(f"数据库表中缺少列：{col}")
 
-            if sql_type != db_type:
+            if sql_type != db_type and not (pd.api.types.is_datetime64_any_dtype(sql_type) and pd.api.types.is_datetime64_any_dtype(db_type)):
                 raise ValueError(f"列 '{col}' 的数据类型不匹配。数据库类型：{db_type}，DataFrame 类型：{sql_type}")
 
     def _create_table_from_df(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields) -> None:
