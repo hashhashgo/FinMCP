@@ -20,6 +20,12 @@ dependencies = [
     "yfinance>=0.2.66",
 ]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+finmcp = ["data/**/*"]
+
 [project.entry-points.'finmcp.services']
 fin_history = "finmcp.agent_tools.tool_fin_history:mcp"
 alpha_vantage_news = "finmcp.agent_tools.tool_alphavantage_news:mcp"

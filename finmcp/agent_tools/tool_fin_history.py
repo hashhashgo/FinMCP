@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from importlib.resources import files
+
 if not __package__:
     sys.path.append(str(Path(__file__).parent.parent.parent))
 from finmcp.data_sources.fin_history import DataSource
@@ -118,7 +120,7 @@ Returns: List of dictionaries, each containing:
 )
 def list_indices() -> List[Dict[str, str]]:
     print("Listing known financial indices")
-    df = pd.read_csv(os.path.join(Path(__file__).parent, 'known_indices.csv'))
+    df = pd.read_csv(files("finmcp").joinpath("data/known_indices.csv").open(encoding="utf-8"))
     df = df[['name', 'type'] + list(DATASOURCES.keys())]
     ret = []
     for _, row in df.iterrows():
