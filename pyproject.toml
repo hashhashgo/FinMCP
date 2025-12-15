@@ -27,9 +27,6 @@ include-package-data = true
 finmcp = ["data/**/*"]
 
 [project.entry-points.'finmcp.services']
-fin_history = "finmcp.agent_tools.tool_fin_history:mcp"
-alpha_vantage_news = "finmcp.agent_tools.tool_alphavantage_news:mcp"
-jina_search = "finmcp.agent_tools.tool_jina_search:mcp"
 
 [dependency-groups]
 dev = [
