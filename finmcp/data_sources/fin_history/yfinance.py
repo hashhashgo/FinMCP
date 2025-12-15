@@ -43,7 +43,7 @@ class YahooFinanceDataSource(DataSource):
         #     end_date = end_date + self._datetime_shift_base(freq)
         ticker = yf.Ticker(symbol)
         df = ticker.history(start=start_date, end=end_date, interval=yf_freq)
-        df = df.rename(index={"Datetime": "Date"})
+        df.index.name = "date"
         df = df.reset_index()
         return self._format_dataframe(df)
 
