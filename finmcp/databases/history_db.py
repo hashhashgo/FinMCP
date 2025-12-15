@@ -407,7 +407,9 @@ class HistoryDB(BaseDB):
         if table_name not in self.tables:
             self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         
-        assert self.tables[table_name], f"数据库表 {table_name} 不存在，请先创建表。"
+        if not self.tables.get(table_name):
+            print(self.tables[table_name], f"数据库表 {table_name} 不存在，跳过。")
+            return
 
         # 检查数据类型
         for col, dtype in df.dtypes.items():
@@ -481,10 +483,13 @@ class HistoryDB(BaseDB):
     def _get_table_info(self, common_fields: Fields) -> Dict[str, str]:
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
         cur = self.connection.cursor()
-        cur.execute(f"""
-        SELECT * FROM DataFrame_infos
-        WHERE table_name = ?;
-        """, (table_name,))
+        try:
+            cur.execute(f"""
+            SELECT * FROM DataFrame_infos
+            WHERE table_name = ?;
+            """, (table_name,))
+        except sqlite3.OperationalError:
+            return {}
         info = {}
         for col in cur.fetchall():
             info[col["column_name"]] = col["data_type"]
