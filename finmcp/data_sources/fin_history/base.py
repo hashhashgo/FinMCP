@@ -70,11 +70,11 @@ class DataSource(ABC):
             return datetime_input
         elif isinstance(datetime_input, int):
             if datetime_input > 9999999999: datetime_input = datetime_input // 1000
-            return datetime.fromtimestamp(datetime_input)
+            return datetime.fromtimestamp(datetime_input).astimezone()
         elif isinstance(datetime_input, str):
             for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
                 try:
-                    return datetime.strptime(datetime_input, fmt)
+                    return datetime.strptime(datetime_input, fmt).astimezone()
                 except ValueError:
                     continue
             raise ValueError(f"String datetime format not recognized: {datetime_input}")
