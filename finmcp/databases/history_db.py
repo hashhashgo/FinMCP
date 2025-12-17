@@ -332,7 +332,7 @@ class HistoryDB(BaseDB):
             if not data.empty:
                 self._insert_data(data, key_fields=key_fields, common_fields=common_fields)
                 self._interval_db.add_interval(key_fields=key_fields, common_fields=common_fields,
-                                               start=missing[0][0], end=missing[-1][1])
+                                               start=missing[0][0], end=(data["date"].dt.tz_localize(None).max() + pd.Timedelta(microseconds=1)).to_pydatetime())
         elif len(missing) > 0:
             for (ms, me) in missing:
                 logging.debug(f"[HistoryDB]: 发现表 {table_name} 中缺失区间 [{ms} - {me})，采用分块下载。")
@@ -352,7 +352,7 @@ class HistoryDB(BaseDB):
                 if not data.empty:
                     self._insert_data(data, key_fields=key_fields, common_fields=common_fields)
                     self._interval_db.add_interval(key_fields=key_fields, common_fields=common_fields, 
-                                                   start=ms, end=me)
+                                                   start=ms, end=(data["date"].dt.tz_localize(None).max() + pd.Timedelta(microseconds=1)).to_pydatetime())
 
         # 最后，返回完整数据
         cur = self.connection.cursor()
