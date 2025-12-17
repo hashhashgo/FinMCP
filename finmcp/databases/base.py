@@ -1,29 +1,57 @@
 import sqlite3
 from contextlib import contextmanager
-from typing import Dict
+from typing import Optional
+
+from contextvars import ContextVar
+
 
 class BaseDB:
 
     table_basename: str
-    connection: sqlite3.Connection
+    db_path: str
+    connection: ContextVar[Optional[sqlite3.Connection]] = ContextVar(
+        "connection", default=None
+    )
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = self.connection.get()
+        if not isinstance(conn, sqlite3.Connection):
+            self.connection.set(
+                sqlite3.connect(
+                    self.db_path,
+                    check_same_thread=False,
+                )
+            )
+            conn = self.connection.get()
+            assert isinstance(conn, sqlite3.Connection), "数据库连接未正确建立。"
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.row_factory = sqlite3.Row
+        return conn
 
     @contextmanager
     def _tx(self):
         """简单事务封装，保证一组操作要么全成功，要么全失败。"""
+        conn = self._connect()
         try:
-            self.connection.execute("BEGIN IMMEDIATE")
+            conn.execute("BEGIN IMMEDIATE")
             yield
-            self.connection.commit()
+            conn.commit()
         except Exception as e:
-            self.connection.rollback()
+            conn.rollback()
             raise e
+
+    def _get_cursor(self):
+        conn = self._connect()
+        return conn.cursor()
 
     def __del__(self):
         self.close()
     
     def close(self):
-        if self.connection:
-            self.connection.commit()
-            self.connection.close()
+        conn = self.connection.get()
+        if conn:
+            conn.commit()
+            conn.close()
+            self.connection.set(None)
 
 __all__ = ["BaseDB"]

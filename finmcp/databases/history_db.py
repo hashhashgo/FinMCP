@@ -93,15 +93,13 @@ def _sqlite_value_to_pandas_value(df: pd.DataFrame, type_dict: Dict[str, str]) -
 class IntervalDB(BaseDB):
     def __init__(self, table_basename: str, db_path: str = os.getenv("HISTORY_DB_PATH", "history.db")):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
-        self.connection = sqlite3.connect(db_path)
-        self.connection.execute("PRAGMA journal_mode=WAL;")
-        self.connection.row_factory = sqlite3.Row
+        self.db_path = db_path
         self.table_basename = table_basename + "_intervals"
         self.tables = set()
 
 
     def _init_schema(self, key_fields: Fields, common_fields: Fields) -> None:
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
 
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
 
@@ -132,7 +130,7 @@ class IntervalDB(BaseDB):
         ON {table_name}({", ".join(key_fields.keys())}, end_ts);
         """)
 
-        self.connection.commit()
+        self._connect().commit()
         self.tables.add(table_name)
 
     # ------------------- 写缓存：插入并合并区间 -------------------
@@ -155,7 +153,7 @@ class IntervalDB(BaseDB):
             self._init_schema(key_fields=key_fields, common_fields=common_fields)
 
         with self._tx():
-            cur = self.connection.cursor()
+            cur = self._get_cursor()
 
             # 1. 查出所有与新区间 [start_ts, end_ts) 有交集的旧区间
             cur.execute(f"""
@@ -213,7 +211,7 @@ class IntervalDB(BaseDB):
         if table_name not in self.tables:
             self._init_schema(key_fields=key_fields, common_fields=common_fields)
 
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
 
         # 1. 查出所有和 [qs, qe) 有交集的已缓存区间
         cur.execute(f"""
@@ -263,7 +261,7 @@ class IntervalDB(BaseDB):
         if table_name not in self.tables:
             self._init_schema(key_fields=key_fields, common_fields=common_fields)
 
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
 
         cur.execute(f"""
             SELECT start_ts, end_ts
@@ -285,9 +283,7 @@ class IntervalDB(BaseDB):
 class HistoryDB(BaseDB):
     def __init__(self, table_basename: str, db_path: str = os.getenv("HISTORY_DB_PATH", "history.db"), missing_threshold: int = 1):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
-        self.connection = sqlite3.connect(db_path)
-        self.connection.execute("PRAGMA journal_mode=WAL;")
-        self.connection.row_factory = sqlite3.Row
+        self.db_path = db_path
         self.table_basename = table_basename
         self.missing_threshold = missing_threshold
         self._interval_db = IntervalDB(table_basename, db_path)
@@ -355,7 +351,7 @@ class HistoryDB(BaseDB):
                                                    start=ms, end=(data["date"].dt.tz_localize(None).max() + pd.Timedelta(microseconds=1)).to_pydatetime())
 
         # 最后，返回完整数据
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
         if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         if not self.tables.get(table_name): return pd.DataFrame([])  # 表不存在，且本次也没数据，直接返回空表
         cur.execute(f"""
@@ -394,7 +390,7 @@ class HistoryDB(BaseDB):
         df = _pandas_value_to_sqlite_value(df)
         data_tuples = [tuple(row) for row in df.itertuples(index=False)]
 
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
         with self._tx():
             cur.executemany(sql, data_tuples)
     
@@ -444,7 +440,7 @@ class HistoryDB(BaseDB):
         logging.info("Generated SQL:")
         logging.info(sql)
 
-        curr = self.connection.cursor()
+        curr = self._get_cursor()
         with self._tx():
             curr.execute(sql)
             self.tables[table_name] = self._set_table_info(df, common_fields=common_fields)
@@ -454,7 +450,7 @@ class HistoryDB(BaseDB):
         把 DataFrame 的表结构信息存储起来。
         """
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
         cur.execute("""
         CREATE TABLE IF NOT EXISTS DataFrame_infos (
             table_name TEXT,
@@ -482,7 +478,7 @@ class HistoryDB(BaseDB):
 
     def _get_table_info(self, common_fields: Fields) -> Dict[str, str]:
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
-        cur = self.connection.cursor()
+        cur = self._get_cursor()
         try:
             cur.execute(f"""
             SELECT * FROM DataFrame_infos
