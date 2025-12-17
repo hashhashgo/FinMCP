@@ -159,5 +159,5 @@ class InvestingComDataSource(DataSource):
         data = json.loads(res.body.decode('utf-8'))
         data = data['data']
         df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'null'])
-        df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df['date'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
         return pd.DataFrame(df[['date', 'open', 'high', 'low', 'close', 'volume']])

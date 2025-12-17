@@ -43,7 +43,7 @@ class NanHuaDataSource(DataSource):
         nh_freq = self._map_frequency(freq)
         data_raw = requests.get(f'http://localhost:13200/?ticker={symbol}&freq={nh_freq}').json()
         df = pd.DataFrame(data_raw)
-        df["date"] = pd.to_datetime(df['quoteTime'], unit='ms')
+        df["date"] = pd.to_datetime(df['quoteTime'], unit='ms', utc=True)
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
         if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():

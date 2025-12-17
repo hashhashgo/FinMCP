@@ -1,9 +1,9 @@
 import json
 import sqlite3
-from contextlib import contextmanager
 import os
 import pandas as pd
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+import tzlocal
 from typing import Optional, Tuple, List, Callable, Dict, Any, Union
 from hashlib import sha1
 from dataclasses import dataclass
@@ -84,7 +84,7 @@ def _sqlite_value_to_pandas_value(df: pd.DataFrame, type_dict: Dict[str, str]) -
     cols = []
     for col, dtype in type_dict.items():
         if pd.api.types.is_datetime64_any_dtype(dtype):
-            df[col] = pd.to_datetime(df[col], unit='us')
+            df[col] = pd.to_datetime(df[col], unit='us', utc=True).dt.tz_convert(tzlocal.get_localzone_name())
         elif pd.api.types.is_bool_dtype(dtype):
             df[col] = df[col].astype(bool)
         cols.append(col)
@@ -290,8 +290,8 @@ class HistoryDB(BaseDB):
         self.tables = {}
     
     def history(self, key_fields: Fields = {}, common_fields: Fields = {}, except_fields: Fields = {},
-                start: datetime = datetime.fromtimestamp(0),
-                end: datetime = datetime.now(),
+                start: datetime = (datetime.now() - timedelta(days=30)).astimezone(),
+                end: datetime = datetime.now().astimezone(),
                 callback: Optional[Callable[..., pd.DataFrame]] = None,
                 field_map: Optional[Dict[str, str]] = None) -> pd.DataFrame:
         """
@@ -309,6 +309,9 @@ class HistoryDB(BaseDB):
             符合条件的历史数据表，类型为pd.DataFrame。
         """
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+
+        start = start.astimezone()
+        end = end.astimezone()
 
         missing = self._interval_db.get_missing(key_fields=key_fields, common_fields=common_fields, start=start, end=end)
         if len(missing) > self.missing_threshold:
@@ -499,11 +502,11 @@ def _parse_datetime(datetime_input: Union[str, datetime, date, int]) -> datetime
         return datetime_input
     elif isinstance(datetime_input, int):
         if datetime_input > 9999999999: datetime_input = datetime_input // 1000
-        return datetime.fromtimestamp(datetime_input)
+        return datetime.fromtimestamp(datetime_input).astimezone()
     elif isinstance(datetime_input, str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
             try:
-                return datetime.strptime(datetime_input, fmt)
+                return datetime.strptime(datetime_input, fmt).astimezone()
             except ValueError:
                 continue
         raise ValueError(f"String datetime format not recognized: {datetime_input}")
