@@ -41,8 +41,6 @@ members = [
 finmcp = { workspace = true, editable = true }
 
 [project.entry-points.'finmcp.services']
-fin_news = "finmcp.agent_tools.tool_fin_news:mcp"
-fin_history = "finmcp.agent_tools.tool_fin_history:mcp"
 
 [dependency-groups]
 dev = [
