@@ -60,13 +60,13 @@ print(df.head())
 
 ## 如何实现自定义数据源
 
-只需继承 `DataSource` 并实现三个抽象方法：
+只需继承 `OHLCDataSource` 并实现三个抽象方法：
 
 ```python
-from your_package import DataSource, DataType, DataFrequency
+from your_package import OHLCDataSource, DataType, DataFrequency
 import pandas as pd
 
-class ExampleSource(DataSource):
+class ExampleSource(OHLCDataSource):
 
     freq_map = {
         DataFrequency.MINUTE1: "1m",

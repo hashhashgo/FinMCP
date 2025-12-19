@@ -61,14 +61,14 @@ print(df.head())
 
 ## Implementing a Custom Data Source
 
-To add a new provider, subclass `DataSource` and implement three abstract methods:
+To add a new provider, subclass `OHLCDataSource` and implement three abstract methods:
 
 ```
 
-from your_package import DataSource, DataType, DataFrequency
+from your_package import OHLCDataSource, DataType, DataFrequency
 import pandas as pd
 
-class ExampleSource(DataSource):
+class ExampleSource(OHLCDataSource):
 
     freq_map = {
         DataFrequency.MINUTE1: "1m",

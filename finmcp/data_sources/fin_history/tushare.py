@@ -1,4 +1,4 @@
-from .base import DataSource, DataType, DataFrequency
+from .base import OHLCDataSource, DataType, DataFrequency
 from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -10,7 +10,7 @@ import tushare as ts
 from tushare.pro.client import DataApi
 
 
-class TushareDataSource(DataSource):
+class TushareDataSource(OHLCDataSource):
 
     name = "tushare"
 
@@ -28,7 +28,7 @@ class TushareDataSource(DataSource):
 
     pro: DataApi
 
-    def __init__(self, token: Optional[str] = None, cache_file: Optional[str] = None):
+    def __init__(self, token: Optional[str] = None):
         if token is None and os.getenv('TUSHARE_API_KEY') is not None: token = os.getenv('TUSHARE_API_KEY')
         if token is not None and (self.__class__.token is None or self.__class__.token != token):
             self.__class__.token = token
@@ -36,15 +36,14 @@ class TushareDataSource(DataSource):
         assert self.__class__.token is not None, "Tushare API token must be provided either as an argument or through the TUSHARE_API_KEY environment variable"
         assert self.__class__.pro is not None, "Tushare API client initialization failed"
 
-        if cache_file is not None: self.__class__.cache_conn = sqlite3.connect(cache_file)
-
 
     @history_cache(
         table_basename=name,
-        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", "history.db"),
         key_fields=("symbol",),
         common_fields=("type", "freq"),
         except_fields=(),
+        missing_threshold=0
     )
     def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         if type == DataType.STOCK: return self._format_dataframe(self._history_stock(symbol, start, end, freq))
@@ -59,18 +58,16 @@ class TushareDataSource(DataSource):
         end_date = self._parse_datetime(end).strftime("%Y%m%d")
         if ts_freq == "daily":
             df = self.__class__.pro.daily(ts_code=symbol, start_date=start_date, end_date=end_date)
-            return df
         elif ts_freq == "weekly":
             df = self.__class__.pro.weekly(ts_code=symbol, start_date=start_date, end_date=end_date)
-            return df
         elif ts_freq == "monthly":
             df = self.__class__.pro.monthly(ts_code=symbol, start_date=start_date, end_date=end_date)
-            return df
         else:
             start_date = self._parse_datetime(start).strftime("%Y-%m-%d %H:%M:%S")
             end_date = self._parse_datetime(end).strftime("%Y-%m-%d %H:%M:%S")
             df = self.__class__.pro.stk_mins(ts_code=symbol, freq=self._map_frequency(freq), start_date=start_date, end_date=end_date)
-            return df
+        df['trade_date'] = pd.to_datetime(df['trade_date']).dt.tz_localize('Asia/Shanghai')
+        return df
 
     def _history_index(self, symbol: str, start: Union[str, datetime, date, int], end: Union[str, datetime, date, int], freq: DataFrequency) -> pd.DataFrame:
         ts_freq = self._map_frequency(freq)
@@ -78,15 +75,14 @@ class TushareDataSource(DataSource):
         end_date = self._parse_datetime(end).strftime("%Y%m%d")
         if ts_freq == "daily":
             df = self.__class__.pro.index_daily(ts_code=symbol, start_date=start_date, end_date=end_date)
-            return df
         elif ts_freq == "weekly":
             df = self.__class__.pro.index_weekly(ts_code=symbol, start_date=start_date, end_date=end_date)
-            return df
         elif ts_freq == "monthly":
             df = self.__class__.pro.index_monthly(ts_code=symbol, start_date=start_date, end_date=end_date)
-            return df
         else:
             raise NotImplementedError(f"Frequency {freq} not supported for index data in Tushare")
+        df['trade_date'] = pd.to_datetime(df['trade_date']).dt.tz_localize('Asia/Shanghai')
+        return df
         
     def _history_forex(self, symbol: str, start: Union[str, datetime, date, int], end: Union[str, datetime, date, int], freq: DataFrequency) -> pd.DataFrame:
         ts_freq = self._map_frequency(freq)

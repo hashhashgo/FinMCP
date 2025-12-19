@@ -11,7 +11,7 @@ from importlib.resources import files
 
 if not __package__:
     sys.path.append(str(Path(__file__).parent.parent.parent))
-from finmcp.data_sources.fin_history import DataSource
+from finmcp.data_sources.fin_history import OHLCDataSource
 from finmcp.data_sources.fin_history import DataType, DataFrequency, STANDARD_COLUMN_NAMES, DATASOURCES
 
 mcp = FastMCP(
@@ -21,7 +21,7 @@ mcp = FastMCP(
     """,
 )
 
-datasources: Dict[str, DataSource] = {}
+datasources: Dict[str, OHLCDataSource] = {}
 
 @mcp.tool(
     description = 

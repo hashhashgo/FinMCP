@@ -1,4 +1,4 @@
-from .base import DataSource, DataType, DataFrequency
+from .base import OHLCDataSource, DataType, DataFrequency
 from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 import yfinance as yf
 
 
-class YahooFinanceDataSource(DataSource):
+class YahooFinanceDataSource(OHLCDataSource):
 
     name = "yahoo_finance"
 
@@ -31,7 +31,7 @@ class YahooFinanceDataSource(DataSource):
 
     @history_cache(
         table_basename=name,
-        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", "history.db"),
         key_fields=("symbol", "freq"),
         except_fields=("type",)
     )

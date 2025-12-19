@@ -11,87 +11,14 @@ import inspect
 
 from pyparsing import wraps
 
-from . import BaseDB, DB_CONNECTIONS
+from . import BaseDB, Fields, DB_CONNECTIONS
 
 import logging
 
-
-Fields = Dict[str, Union[int, str, datetime, float, bool]]
-
-def _python_type_to_sqlite_type(py_type: str) -> str:
-    if py_type in ["int", "bool"]:
-        return "INTEGER"
-    elif py_type == "float":
-        return "REAL"
-    elif py_type == "str":
-        return "TEXT"
-    elif py_type == "datetime":
-        return "INTEGER"
-    else:
-        return "TEXT"     # 默认当作 BLOB
-
-def _python_value_to_sqlite_value(value: Any) -> Any:
-    if isinstance(value, datetime):
-        return _datetime_to_timestamp(value)
-    elif isinstance(value, bool):
-        return int(value)
-    elif isinstance(value, (int, float, str)):
-        return value
-    else:
-        return str(value)
-
-def _pandas_dtype_to_sqlite_type(dtype: pd.api.extensions.ExtensionDtype) -> str:
-    if pd.api.types.is_integer_dtype(dtype):
-        return "INTEGER"
-    elif pd.api.types.is_float_dtype(dtype):
-        return "REAL"
-    elif pd.api.types.is_bool_dtype(dtype):
-        return "INTEGER"   # 0/1
-    elif pd.api.types.is_datetime64_any_dtype(dtype):
-        return "INTEGER"    # 存 timestamp us
-    else:
-        return "TEXT"       # 默认当作 TEXT
-    
-def _timestamp_to_datetime(ts: int) -> datetime:
-    return datetime.fromtimestamp(ts / 1000000)
-
-def _datetime_to_timestamp(dt: datetime) -> int:
-    return int(dt.timestamp() * 1000000)
-
-def _get_table_name(base: str, common_fields: Fields) -> str:
-    hashed_name = sha1(("-".join([str(v) for v in common_fields.values()])).encode()).hexdigest()
-    return f"{base}_{hashed_name}"
-
-def _json_serialize(obj: Any) -> str:
-    if isinstance(obj, str):
-        return obj
-    try:
-        return json.dumps(obj)
-    except TypeError:
-        return str(obj)
-
-def _pandas_value_to_sqlite_value(df: pd.DataFrame) -> pd.DataFrame:
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].astype('int64') // 1000
-        elif pd.api.types.is_bool_dtype(df[col]):
-            df[col] = df[col].astype(int)
-        elif df[col].dtype == 'object':
-            df[col] = df[col].map(_json_serialize).astype("string")
-    return df
-
-def _sqlite_value_to_pandas_value(df: pd.DataFrame, type_dict: Dict[str, str]) -> pd.DataFrame:
-    cols = []
-    for col, dtype in type_dict.items():
-        if pd.api.types.is_datetime64_any_dtype(dtype):
-            df[col] = pd.to_datetime(df[col], unit='us', utc=True).dt.tz_convert(tzlocal.get_localzone_name())
-        elif pd.api.types.is_bool_dtype(dtype):
-            df[col] = df[col].astype(bool)
-        cols.append(col)
-    return df[cols]
+from .utils import *
 
 class IntervalDB(BaseDB):
-    def __init__(self, table_basename: str, db_path: str = os.getenv("HISTORY_DB_PATH", "history.db")):
+    def __init__(self, table_basename: str, db_path: str = os.getenv("DB_PATH", "history.db")):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename + "_intervals"
@@ -281,7 +208,7 @@ class IntervalDB(BaseDB):
 
 
 class HistoryDB(BaseDB):
-    def __init__(self, table_basename: str, db_path: str = os.getenv("HISTORY_DB_PATH", "history.db"), missing_threshold: int = 1):
+    def __init__(self, table_basename: str, db_path: str = os.getenv("DB_PATH", "history.db"), missing_threshold: int = 1):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename
@@ -331,7 +258,7 @@ class HistoryDB(BaseDB):
             if not data.empty:
                 self._insert_data(data, key_fields=key_fields, common_fields=common_fields)
                 self._interval_db.add_interval(key_fields=key_fields, common_fields=common_fields,
-                                               start=missing[0][0], end=(data["date"].dt.tz_localize(None).max() + pd.Timedelta(microseconds=1)).to_pydatetime())
+                                               start=missing[0][0], end=(data["date"].max() + pd.Timedelta(microseconds=1)).to_pydatetime())
         elif len(missing) > 0:
             for (ms, me) in missing:
                 logging.debug(f"[HistoryDB]: 发现表 {table_name} 中缺失区间 [{ms} - {me})，采用分块下载。")
@@ -351,7 +278,7 @@ class HistoryDB(BaseDB):
                 if not data.empty:
                     self._insert_data(data, key_fields=key_fields, common_fields=common_fields)
                     self._interval_db.add_interval(key_fields=key_fields, common_fields=common_fields, 
-                                                   start=ms, end=(data["date"].dt.tz_localize(None).max() + pd.Timedelta(microseconds=1)).to_pydatetime())
+                                                   start=ms, end=(data["date"].max() + pd.Timedelta(microseconds=1)).to_pydatetime())
 
         # 最后，返回完整数据
         cur = self._get_cursor()
@@ -361,7 +288,7 @@ class HistoryDB(BaseDB):
             SELECT * FROM {table_name}
             WHERE date >= ? AND date < ?
                 AND {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
-            ORDER BY date ASC
+            ORDER BY date DESC;
         """, (_datetime_to_timestamp(start), _datetime_to_timestamp(end), *[_python_value_to_sqlite_value(v) for v in key_fields.values()]))
         rows = cur.fetchall()
         df = pd.DataFrame(rows, columns=rows[0].keys() if rows else [])
@@ -494,24 +421,6 @@ class HistoryDB(BaseDB):
             info[col["column_name"]] = col["data_type"]
         return info
 
-
-def _parse_datetime(datetime_input: Union[str, datetime, date, int]) -> datetime:
-    if isinstance(datetime_input, date):
-        return datetime(datetime_input.year, datetime_input.month, datetime_input.day)
-    elif isinstance(datetime_input, datetime):
-        return datetime_input
-    elif isinstance(datetime_input, int):
-        if datetime_input > 9999999999: datetime_input = datetime_input // 1000
-        return datetime.fromtimestamp(datetime_input).astimezone()
-    elif isinstance(datetime_input, str):
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
-            try:
-                return datetime.strptime(datetime_input, fmt).astimezone()
-            except ValueError:
-                continue
-        raise ValueError(f"String datetime format not recognized: {datetime_input}")
-    else:
-        raise TypeError(f"Unsupported datetime input type: {type(datetime_input)}")
 
 @dataclass(frozen=True)
 class CacheConfig:

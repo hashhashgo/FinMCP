@@ -64,21 +64,4 @@ async def main():
     close_all_services()
 
 if __name__ == "__main__":
-    from finmcp.data_sources.fin_history import DATASOURCES, DataType, DataFrequency
-    from datetime import datetime, date
-    # tu = DATASOURCES['tushare']()
-    yf = DATASOURCES['yahoo_finance']()
-    # ic = DATASOURCES['investing.com']()
-    # nh = DATASOURCES['nanhua']()
-    # df_tu = tu.history("000001.sh", type=DataType.INDEX, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
-    # df_yf = yf.history("AAAA", type=DataType.STOCK, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
-    df_yf = yf.history("AAAA", type=DataType.STOCK, start="2025-12-01", end=datetime.now(), freq=DataFrequency.MINUTE60)
-    # df_ic = ic.history("usd-cny", type=DataType.FOREX, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
-    # df_nh = nh.history("PP_NH", type=DataType.COMMODITY, start="2000-01-01", end=datetime.now(), freq=DataFrequency.DAILY)
-    # print(df_tu)
-    print(df_yf)
-    # print(df_ic)
-    # print(df_nh)
-
-# if __name__ == "__main__":
-#     asyncio.run(main())
+    asyncio.run(main())

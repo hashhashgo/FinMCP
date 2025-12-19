@@ -1,4 +1,4 @@
-from .base import DataSource, DataType, DataFrequency
+from .base import OHLCDataSource, DataType, DataFrequency
 from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta
 
 import requests
 
-class NanHuaDataSource(DataSource):
+class NanHuaDataSource(OHLCDataSource):
 
     name = "nanhua"
 
@@ -27,13 +27,15 @@ class NanHuaDataSource(DataSource):
     column_names = ["date", "open", "high", "low", "close", "volume"]
 
 
-    def __init__(self, token: Optional[str] = None, cache_file: Optional[str] = None):
-        if cache_file is not None: self.__class__.cache_conn = sqlite3.connect(cache_file)
+    def __init__(self, data_server_url: str = "http://localhost:13200/"):
+        if not data_server_url.endswith('/'):
+            data_server_url += '/'
+        self.data_server_url = data_server_url
 
 
     @history_cache(
         table_basename=name,
-        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", "history.db"),
         key_fields=("symbol",),
         common_fields= ("freq", ),
         except_fields=("type", ),
@@ -41,7 +43,7 @@ class NanHuaDataSource(DataSource):
     def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         assert type == DataType.COMMODITY, "NanHuaDataSource only supports commodity data"
         nh_freq = self._map_frequency(freq)
-        data_raw = requests.get(f'http://localhost:13200/?ticker={symbol}&freq={nh_freq}').json()
+        data_raw = requests.get(f'{self.data_server_url}?ticker={symbol}&freq={nh_freq}').json()
         df = pd.DataFrame(data_raw)
         df["date"] = pd.to_datetime(df['quoteTime'], unit='ms', utc=True)
         start_date = self._parse_datetime(start)

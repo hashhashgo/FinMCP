@@ -1,6 +1,11 @@
+import json
+import pandas as pd
 import sqlite3
+import tzlocal
+from hashlib import sha1
 from contextlib import contextmanager
-from typing import Optional
+from typing import Dict, Optional, Any
+from datetime import datetime, date, timedelta
 
 from contextvars import ContextVar
 
@@ -54,4 +59,7 @@ class BaseDB:
             conn.close()
             self.connection.set(None)
 
-__all__ = ["BaseDB"]
+
+Fields = Dict[str, int | str | datetime | float | bool]
+
+__all__ = ["BaseDB", "Fields"]

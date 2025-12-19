@@ -1,4 +1,4 @@
-from .base import DataSource, DataType, DataFrequency
+from .base import OHLCDataSource, DataType, DataFrequency
 from finmcp.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -17,7 +17,7 @@ import os
 
 from typing import Optional, Union
 
-class InvestingComDataSource(DataSource):
+class InvestingComDataSource(OHLCDataSource):
 
     name = "investing.com"
 
@@ -35,7 +35,7 @@ class InvestingComDataSource(DataSource):
     column_names = ["date", "open", "high", "low", "close", "volume"]
 
 
-    def __init__(self, token: Optional[str] = None, cache_file: Optional[str] = None) -> None:
+    def __init__(self) -> None:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -52,7 +52,6 @@ class InvestingComDataSource(DataSource):
         self.driver = webdriver.Firefox()
         self.driver.minimize_window()
         self.lock = Lock()
-        if cache_file is not None: self.__class__.cache_conn = sqlite3.connect(cache_file)
     
     def __del__(self) -> None:
         self.driver.quit()
@@ -60,7 +59,7 @@ class InvestingComDataSource(DataSource):
 
     @history_cache(
         table_basename="investing_com",
-        db_path=os.getenv("HISTORY_DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", "history.db"),
         key_fields=("symbol", "freq"),
         common_fields= ("type",),
         except_fields=(),

@@ -1,18 +1,18 @@
-from .base import DataFrequency, DataType, OHLCDataSource, STANDARD_COLUMN_NAMES
+from .base import DataType, NewsDataSource
 import pkgutil
 import importlib
 import inspect
 from pathlib import Path
 from typing import Type, Dict
 
-DATASOURCES: Dict[str, Type[OHLCDataSource]] = {}
+DATASOURCES: Dict[str, Type[NewsDataSource]] = {}
 
 import dotenv
 dotenv.load_dotenv()
 
 def _discover_datasource_classes():
     """
-    扫描当前包下所有 .py 模块，找到所有继承 OHLCDataSource 的子类，
+    扫描当前包下所有 .py 模块，找到所有继承 NewsDataSource 的子类，
     填充到 DATASOURCES 里。
     """
     package_name = __name__
@@ -28,23 +28,21 @@ def _discover_datasource_classes():
         module = importlib.import_module(full_name)
 
         for attr_name, obj in inspect.getmembers(module, inspect.isclass):
-            if issubclass(obj, OHLCDataSource) and obj is not OHLCDataSource:
+            if issubclass(obj, NewsDataSource) and obj is not NewsDataSource:
                 key = getattr(obj, "name", obj.__name__)
                 if key == "base":
-                    print(f"Warning: OHLCDataSource subclass in {full_name} has reserved name 'base'.")
+                    print(f"Warning: NewsDataSource subclass in {full_name} has reserved name 'base'.")
                     print("Please rename it to avoid conflicts.")
                     print("Skipping registration of this class.")
                     continue
                 if key in DATASOURCES:
-                    raise ValueError(f"Duplicate OHLCDataSource name detected: {key} in {obj.__name__} and {DATASOURCES[key].__name__}")
+                    raise ValueError(f"Duplicate NewsDataSource name detected: {key} in {obj.__name__} and {DATASOURCES[key].__name__}")
                 DATASOURCES[key] = obj
 
 _discover_datasource_classes()
 
 __all__ = [
-    "OHLCDataSource",
+    "NewsDataSource",
     "DataType",
-    "DataFrequency",
-    "STANDARD_COLUMN_NAMES",
     "DATASOURCES",
 ]
