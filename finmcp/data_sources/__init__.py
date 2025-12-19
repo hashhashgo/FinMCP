@@ -39,6 +39,7 @@ class DataSource(ABC):
 
 
     def _parse_datetime(self, datetime_input: Union[str, datetime, date, int]) -> datetime:
+        datetime_output = None
         if isinstance(datetime_input, datetime):
             datetime_output = datetime_input
         elif isinstance(datetime_input, date):
@@ -50,11 +51,12 @@ class DataSource(ABC):
             for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
                 try:
                     datetime_output = datetime.strptime(datetime_input, fmt)
+                    break
                 except ValueError:
                     continue
-            raise ValueError(f"String datetime format not recognized: {datetime_input}")
         else:
             raise TypeError(f"Unsupported datetime input type: {type(datetime_input)}")
+        if not isinstance(datetime_output, datetime): raise ValueError(f"String datetime format not recognized: {datetime_input}")
         return datetime_output.astimezone()
     
     def _parse_date(self, date_input: Union[str, datetime, date, int]) -> date:
