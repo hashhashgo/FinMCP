@@ -39,6 +39,10 @@ If an error occurs, returns a list with a single dictionary containing:
 - request: dict, The original request parameters
 - error: str, Error message
 
+Be careful with the symbol parameter, for chinese news, it may requiere a chinese keyword.
+For example, to search for news related to "CSI500", you may use the chinese name "中证500".
+This function only returns news articles that exactly match the given symbol keyword in their title or content.
+
 Parameters:
 - datasource: str, Data source, currently supports: "{'" / "'.join(DATASOURCES.keys())}"
 - symbol: str, any keywords to search for in the news articles
