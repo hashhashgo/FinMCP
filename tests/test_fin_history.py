@@ -5,6 +5,8 @@ if __name__ == "__main__":
 
 from finmcp.data_sources.fin_history import DATASOURCES, DataType, DataFrequency
 from datetime import datetime, date, timedelta
+import dotenv
+dotenv.load_dotenv()
 
 def test_tushare_history():
     tu = DATASOURCES['tushare']()
@@ -33,7 +35,7 @@ def test_nanhua_history():
     assert len(df_nh)
 
 if __name__ == "__main__":
-    test_tushare_history()
-    test_yahoo_finance_history()
+    # test_tushare_history()
+    # test_yahoo_finance_history()
     test_investing_history()
-    test_nanhua_history()
+    # test_nanhua_history()

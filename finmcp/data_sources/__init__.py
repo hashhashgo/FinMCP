@@ -40,21 +40,22 @@ class DataSource(ABC):
 
     def _parse_datetime(self, datetime_input: Union[str, datetime, date, int]) -> datetime:
         if isinstance(datetime_input, datetime):
-            return datetime_input
+            datetime_output = datetime_input
         elif isinstance(datetime_input, date):
-            return datetime(datetime_input.year, datetime_input.month, datetime_input.day)
+            datetime_output = datetime(datetime_input.year, datetime_input.month, datetime_input.day)
         elif isinstance(datetime_input, int):
             if datetime_input > 9999999999: datetime_input = datetime_input // 1000
-            return datetime.fromtimestamp(datetime_input).astimezone()
+            datetime_output = datetime.fromtimestamp(datetime_input)
         elif isinstance(datetime_input, str):
             for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
                 try:
-                    return datetime.strptime(datetime_input, fmt).astimezone()
+                    datetime_output = datetime.strptime(datetime_input, fmt)
                 except ValueError:
                     continue
             raise ValueError(f"String datetime format not recognized: {datetime_input}")
         else:
             raise TypeError(f"Unsupported datetime input type: {type(datetime_input)}")
+        return datetime_output.astimezone()
     
     def _parse_date(self, date_input: Union[str, datetime, date, int]) -> date:
         dt = self._parse_datetime(date_input)

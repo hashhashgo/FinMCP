@@ -5,6 +5,8 @@ if __name__ == "__main__":
 
 from finmcp.data_sources.fin_news.eastmoney import EastMoneyNewsDataSource
 from datetime import datetime, date, timedelta
+import dotenv
+dotenv.load_dotenv()
 
 def test_eastmoney_news_details():
     ds = EastMoneyNewsDataSource()

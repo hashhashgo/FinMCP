@@ -7,9 +7,6 @@ from typing import Type, Dict
 
 DATASOURCES: Dict[str, Type[NewsDataSource]] = {}
 
-import dotenv
-dotenv.load_dotenv()
-
 def _discover_datasource_classes():
     """
     扫描当前包下所有 .py 模块，找到所有继承 NewsDataSource 的子类，
