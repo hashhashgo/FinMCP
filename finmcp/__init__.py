@@ -11,6 +11,8 @@ from typing import Dict, List, Tuple
 
 from .ping_client import PingClient
 
+import logging
+
 
 CONNECTION_RECORD_FILE = os.getenv("CONNECTION_RECORD_FILE", "agent_tools_service_ports.json")
 
@@ -42,6 +44,7 @@ def _discover_services() -> None:
         try:
             obj = ep.load()
         except Exception:
+            logging.warning(f"Failed to load MCP service entry point: {ep.name}", exc_info=True)
             continue
 
         if not isinstance(obj, FastMCP):
