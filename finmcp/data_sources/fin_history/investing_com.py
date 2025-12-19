@@ -59,7 +59,7 @@ class InvestingComDataSource(OHLCDataSource):
 
     @history_cache(
         table_basename="investing_com",
-        db_path=os.getenv("DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", ""),
         key_fields=("symbol", "freq"),
         common_fields= ("type",),
         except_fields=(),

@@ -18,16 +18,12 @@ Languages: [English](README.md) | 中文
 
 * **统一管理 MCP 服务**
   将多个 FastMCP 实例集中管理、统一启动、关闭与连接信息记录。
-
 * **插件式服务扩展（entry_points）**
   用户可以在自己的库中注册 FastMCP 实例，使其被 finmcp 管理（无需修改 finmcp 代码）。
-
 * **自动端口管理与连接记录**
   所有服务启动后会将 URL 写入连接记录文件。
-
 * **服务可存活检测（Ping 模式）**
   使用 `uv run -m finmcp` 启动时，会在后台自动每 10 秒向所有 MCP 服务发送 Ping 请求，并输出状态日志。
-
 * **LangChain / MultiServerMCPClient 无缝集成**
   直接通过 `MCP_CONNECTIONS` 获取全部 MCP 服务 URL。
 
@@ -80,9 +76,9 @@ Pinged service service_name successfully.
 START_SERVICES_INTERNAL=true
 ```
 
-然后当主程序`start_all_services()`时自动启动所有MCP服务。
+然后当主程序 `start_all_services()`时自动启动所有MCP服务。
 
-**注意：**使用此方式在`close_all_services()`时会关闭所有记录的MCP服务，注意释放连接。
+**注意：**使用此方式在 `close_all_services()`时会关闭所有记录的MCP服务，注意释放连接。
 
 ## 环境变量
 
@@ -183,7 +179,7 @@ uv pip install --editable .
 uv build
 ```
 
-**注意：**如果不安装和编译，您注册的记录`uv`不会自动添加到项目的entry points中。
+**注意：**如果不安装和编译，您注册的记录 `uv`不会自动添加到项目的entry points中。
 
 ### 4. finmcp 会自动管理您的 MCP
 
@@ -203,15 +199,29 @@ uv run -m finmcp
 
 ---
 
+# 数据库支持
+
+本项目支持缓存所有下载的数据，记录到  `DB_PATH` 环境变量指向的数据库文件中。
+
+请自行创建对应的sqlite3的数据库文件，比如：
+
+```bash
+sqlite3 history.db
+> select * from sqlite_master;
+> .quit
+```
+
+---
+
 # 使用说明总结
 
-| 功能                     | 操作                                                         |
-| ------------------------ | ------------------------------------------------------------ |
-| 从 GitHub 安装 finmcp    | `uv add https://github.com/hashhashgo/FinMCP.git`            |
-| 启动所有 MCP 并后台 Ping | `uv run -m finmcp`                                           |
-| 主程序中启动/读取连接    | `start_all_services()`                                       |
-| 在 LangChain 中使用      | `client = MultiServerMCPClient(connections=MCP_CONNECTIONS)` |
-| 关闭所有 MCP 服务        | `close_all_services()`                                       |
+| 功能                     | 操作                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| 从 GitHub 安装 finmcp    | `uv add https://github.com/hashhashgo/FinMCP.git`                             |
+| 启动所有 MCP 并后台 Ping | `uv run -m finmcp`                                                            |
+| 主程序中启动/读取连接    | `start_all_services()`                                                        |
+| 在 LangChain 中使用      | `client = MultiServerMCPClient(connections=MCP_CONNECTIONS)`                  |
+| 关闭所有 MCP 服务        | `close_all_services()`                                                        |
 | 注册新 MCP               | 在您的库的 `pyproject.toml` 写入 `[project.entry-points."finmcp.services"]` |
 
 ---
@@ -219,4 +229,3 @@ uv run -m finmcp
 # License
 
 MIT
-

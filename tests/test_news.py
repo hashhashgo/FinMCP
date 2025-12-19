@@ -4,7 +4,6 @@ if __name__ == "__main__":
     sys.path.append(Path(__file__).parent.parent.as_posix())
 
 from finmcp.data_sources.fin_news.eastmoney import EastMoneyNewsDataSource
-from finmcp.data_sources import DataType
 from datetime import datetime, date, timedelta
 
 def test_eastmoney_news_details():
@@ -14,7 +13,7 @@ def test_eastmoney_news_details():
 
 def test_eastmoney_news_list():
     ds = EastMoneyNewsDataSource()
-    df = ds.list_news("上证50", type=DataType.INDEX, start=datetime.now() - timedelta(days=30), end=datetime.now())
+    df = ds.list_news("上证50", start=datetime.now() - timedelta(days=30), end=datetime.now())
     assert not df.empty
     assert df['date'].max() < datetime.now().astimezone()
     assert df['date'].min() >= (datetime.now() - timedelta(days=30)).astimezone()

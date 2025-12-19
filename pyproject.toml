@@ -1,6 +1,6 @@
 [project]
 name = "finmcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "A financial data agent toolset for MCP"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,6 +41,8 @@ members = [
 finmcp = { workspace = true, editable = true }
 
 [project.entry-points.'finmcp.services']
+fin_news = "finmcp.agent_tools.tool_fin_news:mcp"
+fin_history = "finmcp.agent_tools.tool_fin_history:mcp"
 
 [dependency-groups]
 dev = [

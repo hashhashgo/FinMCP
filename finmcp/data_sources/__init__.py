@@ -11,6 +11,7 @@ class DataType(Enum):
     BOND = 'bond'
     FOREX = 'forex'
     CRYPTO = 'crypto'
+    OTHER = 'other'
 
 class DataFrequency(Enum):
     MINUTE1 = 'minute1'

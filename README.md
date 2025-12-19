@@ -18,16 +18,12 @@ finmcp includes several built-in financial MCP services and also allows users to
 
 * **Unified MCP Service Management**
   Centralized startup, shutdown, and connection tracking for multiple FastMCP instances.
-
 * **Plugin-based Service Extension (entry_points)**
   Users can register their own FastMCP instances without modifying finmcp’s source code.
-
 * **Automatic Port Assignment & Connection Recording**
   All services write their assigned URLs into a connection record file after startup.
-
 * **Service Health Check (Ping Mode)**
   When launched via `uv run -m finmcp`, the framework automatically pings all MCP services every 10 seconds and prints status logs.
-
 * **Seamless LangChain / MultiServerMCPClient Integration**
   All MCP service URLs are directly available through `MCP_CONNECTIONS`.
 
@@ -216,10 +212,24 @@ This feature conflicts with the primary finmcp service manager and should genera
 
 ---
 
+# Database Support
+
+This project supports caching all downloaded data by storing it in the database file specified by the `DB_PATH` environment variable.
+
+Please create the corresponding SQLite3 database file yourself, for example:
+
+```bash
+sqlite3 history.db
+> select * from sqlite_master;
+> .quit
+```
+
+---
+
 # Summary
 
-| Feature                    | Usage                                                    |
-| -------------------------- | -------------------------------------------------------- |
+| Feature                    | Usage                                                      |
+| -------------------------- | ---------------------------------------------------------- |
 | Install finmcp from GitHub | `uv add https://github.com/hashhashgo/FinMCP.git`        |
 | Start all MCP services     | `uv run -m finmcp`                                       |
 | Start/load connections     | `start_all_services()`                                   |

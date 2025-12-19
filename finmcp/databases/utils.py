@@ -26,8 +26,10 @@ def _python_value_to_sqlite_value(value: Any) -> Any:
         return int(value)
     elif isinstance(value, (int, float, str)):
         return value
-    else:
+    elif isinstance(value, (list, dict)):
         return json.dumps(value)
+    else:
+        return str(value)
 
 def _sqlite_value_to_python_value(value: Any, type_s: str) -> Any:
     if type_s == "datetime":
@@ -40,10 +42,10 @@ def _sqlite_value_to_python_value(value: Any, type_s: str) -> Any:
         return float(value)
     elif type_s == "str":
         return str(value)
-    elif isinstance(value, str):
+    elif type_s in ["list", "dict"]:
         return json.loads(value)
     else:
-        raise TypeError(f"Unsupported convert: {type(value)} -> {type_s}")
+        return value
 
 def _pandas_dtype_to_sqlite_type(dtype: pd.api.extensions.ExtensionDtype) -> str:
     if pd.api.types.is_integer_dtype(dtype):

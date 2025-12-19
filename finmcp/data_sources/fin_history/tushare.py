@@ -39,7 +39,7 @@ class TushareDataSource(OHLCDataSource):
 
     @history_cache(
         table_basename=name,
-        db_path=os.getenv("DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", ""),
         key_fields=("symbol",),
         common_fields=("type", "freq"),
         except_fields=(),

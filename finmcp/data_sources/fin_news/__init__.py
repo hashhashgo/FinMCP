@@ -1,4 +1,4 @@
-from .base import DataType, NewsDataSource
+from .base import NewsDataSource
 import pkgutil
 import importlib
 import inspect
@@ -43,6 +43,5 @@ _discover_datasource_classes()
 
 __all__ = [
     "NewsDataSource",
-    "DataType",
     "DATASOURCES",
 ]

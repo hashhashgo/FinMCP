@@ -1,5 +1,4 @@
 from datetime import date, datetime, timedelta
-from typing import Annotated
 from lxml import etree
 import pandas as pd
 import requests
@@ -7,7 +6,6 @@ import random
 import json
 import os
 
-from .. import DataType
 from .base import NewsDataSource, SortingMethod
 
 from finmcp.databases.history_db import history_cache
@@ -53,15 +51,14 @@ class EastMoneyNewsDataSource(NewsDataSource):
 
     @history_cache(
         table_basename="eastmoney_news",
-        db_path=os.getenv("DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", ""),
         key_fields=("symbol", ),
         common_fields=(),
-        except_fields=("type",)
+        except_fields=()
     )
     def list_news(
         self,
         symbol: str,
-        type: DataType,
         start: str | datetime | date | int = datetime.now() - timedelta(days=30),
         end: str | datetime | date | int = datetime.now()
     ) -> pd.DataFrame:
@@ -105,7 +102,7 @@ class EastMoneyNewsDataSource(NewsDataSource):
 
     @common_cache(
         table_basename="eastmoney_news_details",
-        db_path=os.getenv("DB_PATH", "history.db"),
+        db_path=os.getenv("DB_PATH", ""),
         key_fields=("code", ),
         common_fields=(),
         except_fields=()

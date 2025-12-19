@@ -464,6 +464,9 @@ def history_cache(
         missing_threshold=missing_threshold
     )
 
+    if not cfg.db_path:
+        return lambda func: func  # 不启用缓存，直接返回原函数
+
     assert date_col == "date", NotImplementedError("暂不支持自定义 date_col")
 
     def deco(func: Callable[..., pd.DataFrame]) -> Callable[..., pd.DataFrame]:

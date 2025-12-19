@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Optional, Union, Annotated
 from enum import Enum
 
-from .. import DataSource, DataType
+from .. import DataSource
 
 class SortingMethod(Enum):
     """Enumeration for sorting methods."""
@@ -20,14 +20,12 @@ class NewsDataSource(DataSource, ABC):
     def list_news(
         self,
         symbol: str,
-        type: DataType,
         start: Union[str, datetime, date, int] = 0,
         end: Union[str, datetime, date, int] = datetime.now()
     ) -> pd.DataFrame:
         """Fetch a list of news articles for a given symbol within a specified date range.
         Args:
             symbol (str): The stock symbol to fetch news for.
-            type (DataType): The type of data to fetch.
             start (Union[str, datetime, date, int], optional): The start date for fetching news.
             end (Union[str, datetime, date, int], optional): The end date for fetching news.
         Returns:

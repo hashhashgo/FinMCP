@@ -193,6 +193,9 @@ def common_cache(
         except_fields=except_fields
     )
 
+    if not cfg.db_path:
+        return lambda func: func  # 不启用缓存，直接返回原函数
+
     def deco(func: Callable[..., pd.DataFrame]) -> Callable[..., pd.DataFrame]:
         # 注册 DB（按 模块名:BaseDB）
         reg_key = f"{func.__module__}:{func.__qualname__}"
