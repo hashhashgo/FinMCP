@@ -15,11 +15,11 @@ def test_eastmoney_news_details():
 
 def test_eastmoney_news_list():
     ds = EastMoneyNewsDataSource()
-    df = ds.list_news("上证50", start=datetime.now() - timedelta(days=30), end=datetime.now())
+    df = ds.list_news("百济神州-U", start=datetime.now() - timedelta(days=30), end=datetime.now())
     assert not df.empty
     assert df['date'].max() < datetime.now().astimezone()
     assert df['date'].min() >= (datetime.now() - timedelta(days=30)).astimezone()
 
 if __name__ == "__main__":
-    test_eastmoney_news_details()
     test_eastmoney_news_list()
+    test_eastmoney_news_details()
