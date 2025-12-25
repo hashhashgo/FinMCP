@@ -53,9 +53,10 @@ def _discover_services() -> None:
         # service_name 用 mcp.name，而不是 ep.name
         MCP_SERVICES[ep.name] = obj
 
-_discover_services()
 
 def _run_service(mcp_service: str, port: int) -> None:
+    if not MCP_SERVICES:
+        _discover_services()
     MCP_SERVICES[mcp_service].run(
         transport="http",
         host=MCP_HOST,
@@ -65,6 +66,8 @@ def _run_service(mcp_service: str, port: int) -> None:
     )
 
 def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, test_timeout: int = 1) -> None:
+    if not MCP_SERVICES:
+        _discover_services()
     global MCP_CONNECTIONS
     if MCP_PROCESSES:
         print("MCP services are already running.")
@@ -148,4 +151,4 @@ def close_all_services() -> None:
     if not json.load(open(CONNECTION_RECORD_FILE)):
         os.remove(CONNECTION_RECORD_FILE)
 
-__all__ = ["MCP_SERVICES", "MCP_CONNECTIONS", "start_all_services", "close_all_services"]
+__all__ = ["MCP_CONNECTIONS", "start_all_services", "close_all_services"]
