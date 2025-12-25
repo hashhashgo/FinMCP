@@ -2,7 +2,8 @@ version = 1
 revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
-    "python_full_version >= '3.12'",
+    "python_full_version >= '3.13'",
+    "python_full_version == '3.12.*'",
     "python_full_version == '3.11.*'",
     "python_full_version < '3.11'",
 ]
@@ -633,7 +634,6 @@ version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "blinker" },
-    { name = "brotli" },
     { name = "dotenv" },
     { name = "efinance" },
     { name = "fastmcp" },
@@ -664,7 +664,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "blinker", specifier = "<1.8.0" },
-    { name = "brotli", specifier = ">=1.2.0" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "efinance", specifier = ">=0.5.5.2" },
     { name = "fastmcp", specifier = ">=2.13.3" },
@@ -844,7 +843,8 @@ name = "ipython"
 version = "9.8.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
+    "python_full_version >= '3.13'",
+    "python_full_version == '3.12.*'",
     "python_full_version == '3.11.*'",
 ]
 dependencies = [
@@ -1458,7 +1458,8 @@ name = "numpy"
 version = "2.3.5"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
+    "python_full_version >= '3.13'",
+    "python_full_version == '3.12.*'",
     "python_full_version == '3.11.*'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/65/21b3bc86aac7b8f2862db1e808f1ea22b028e30a225a34a5ede9bf8678f2/numpy-2.3.5.tar.gz", hash = "sha256:784db1dcdab56bf0517743e746dfb0f885fc68d948aba86eeec2cba234bdf1c0", size = 20584950, upload-time = "2025-11-16T22:52:42.067Z" }

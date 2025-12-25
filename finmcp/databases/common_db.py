@@ -43,9 +43,10 @@ class CommonDB(BaseDB):
 
         rows = []
         if self.tables.get(table_name):
+            cond = f"WHERE {' AND '.join([f'{k} = ?' for k in key_fields.keys()])}" if key_fields else ""
             cur.execute(f"""
                 SELECT * FROM {table_name}
-                WHERE {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
+                {cond}
             """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], ))
             rows = cur.fetchall()
         
@@ -53,14 +54,31 @@ class CommonDB(BaseDB):
             assert callback is not None, f"数据库表 {table_name} 不存在，且未提供回调函数以获取数据。"
             # 调用回调函数获取数据
             data = callback(**key_fields, **common_fields, **except_fields)
+            if isinstance(data, pd.DataFrame):
+                assert "data" not in data.columns, "DataFrame 不应包含名为 'data' 的列"
             self._insert_data(data, key_fields=key_fields, common_fields=common_fields)
-            return data
-        elif len(rows) == 1:
+        
+        cur = self._get_cursor()
+        if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
+        assert self.tables.get(table_name), f"数据库表 {table_name} 不存在，插入数据失败。"
+
+        cond = f"WHERE {' AND '.join([f'{k} = ?' for k in key_fields.keys()])}" if key_fields else ""
+
+        cur.execute(f"""
+            SELECT * FROM {table_name}
+            {cond}
+        """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], ))
+        rows = cur.fetchall()
+
+        if isinstance(self.tables[table_name], dict):
+            df = pd.DataFrame(rows, columns=rows[0].keys() if rows else [])
+            if not df.empty:
+                return _sqlite_value_to_pandas_value(df, type_dict=self.tables[table_name])
+            else:
+                return df
+        else:
             data = rows[0]['data']
             return _sqlite_value_to_python_value(data, type_s=self.tables[table_name])
-        else:
-            raise ValueError(f"查询到多条数据，无法唯一确定一条记录：{rows}")
-
 
     def _insert_data(self, data: Any, key_fields: Fields, common_fields: Fields):
         """
@@ -70,17 +88,35 @@ class CommonDB(BaseDB):
         if table_name not in self.tables or self.tables.get(table_name) == "":
             self._create_table_from_data(data, key_fields=key_fields, common_fields=common_fields)
 
-        self._check_data(data, key_fields=key_fields, common_fields=common_fields)
+        if not isinstance(data, pd.DataFrame):
+            for i, k in enumerate(key_fields.keys()):
+                data.insert(i, k, _python_value_to_sqlite_value(key_fields[k]))
+                if isinstance(key_fields[k], str):
+                    data[k] = data[k].astype("string")
+            self._check_data(data, key_fields=key_fields, common_fields=common_fields)
+            placeholders = ",".join("?" * (len(key_fields) + 1))
+            columns = ",".join([f'"{col}"' for col in list(key_fields.keys()) + ['data']])
 
-        placeholders = ",".join("?" * (len(key_fields) + 1))
-        columns = ",".join([f'"{col}"' for col in list(key_fields.keys()) + ['data']])
+            sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns}) VALUES ({placeholders});'
 
-        sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns}) VALUES ({placeholders});'
+            cur = self._get_cursor()
+            with self._tx():
+                cur.execute(sql, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()],
+                                _python_value_to_sqlite_value(data)))
+        else:
+            self._check_data(data, key_fields=key_fields, common_fields=common_fields)
+            placeholders = ",".join("?" * len(data.columns))
+            columns = ",".join([f'"{col}"' for col in data.columns])
 
-        cur = self._get_cursor()
-        with self._tx():
-            cur.execute(sql, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()],
-                              _python_value_to_sqlite_value(data)))
+            sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns}) VALUES ({placeholders});'
+
+            data = data.where(data.notna(), None)
+            data = _pandas_value_to_sqlite_value(data)
+            data_tuples = [tuple(row) for row in data.itertuples(index=False)]
+
+            cur = self._get_cursor()
+            with self._tx():
+                cur.executemany(sql, data_tuples)
     
     def _check_data(self, data: Any, key_fields: Fields, common_fields: Fields) -> None:
         """
@@ -96,9 +132,22 @@ class CommonDB(BaseDB):
             return
 
         # 检查数据类型
-        if type(data).__name__ != self.tables[table_name]:
-            raise TypeError(f"数据类型不匹配，记录的 'data' 列的类型为 {self.tables[table_name]}，"
-                            f"但插入的数据类型为 {type(data).__name__}。")
+        if isinstance(data, pd.DataFrame):
+            for col, dtype in data.dtypes.items():
+                if col in key_fields:
+                    continue  # 跳过 key_fields 的类型检查
+                sql_type = str(dtype)
+                db_type = self.tables[table_name].get(col, None)
+
+                if db_type is None:
+                    raise ValueError(f"数据库表中缺少列：{col}")
+
+                if sql_type != db_type and not (pd.api.types.is_datetime64_any_dtype(sql_type) and pd.api.types.is_datetime64_any_dtype(db_type)):
+                    raise ValueError(f"列 '{col}' 的数据类型不匹配。数据库类型：{db_type}，DataFrame 类型：{sql_type}")
+        else:
+            if type(data).__name__ != self.tables[table_name]:
+                raise TypeError(f"数据类型不匹配，记录的 'data' 列的类型为 {self.tables[table_name]}，"
+                                f"但插入的数据类型为 {type(data).__name__}。")
 
     def _create_table_from_data(self, data: Any, key_fields: Fields, common_fields: Fields) -> None:
         """
@@ -106,13 +155,19 @@ class CommonDB(BaseDB):
         """
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
 
-        cols = [f'"{k}" {_python_type_to_sqlite_type(type(v).__name__)}' for k, v in key_fields.items()]
-        cols.append(f'"data" {_python_type_to_sqlite_type(type(data).__name__)}')
+        cols = set([f'"{k}" {_python_type_to_sqlite_type(type(v).__name__)}' for k, v in key_fields.items()])
+        if not isinstance(data, pd.DataFrame):
+            cols.add(f'"data" {_python_type_to_sqlite_type(type(data).__name__)}')
+        else:
+            for col_name, dtype in data.dtypes.items():
+                cols.add(f'"{col_name}" {_pandas_dtype_to_sqlite_type(dtype)}')
         primary_keys = ", ".join([f'"{k}"' for k in key_fields.keys()])
+        if not primary_keys.strip() == "": primary_keys = f"PRIMARY KEY ({primary_keys})"
 
         col_definitions = ",\n".join(cols)
+        if not col_definitions.strip() == "" and not primary_keys.strip() == "": col_definitions += ","
 
-        sql = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n{col_definitions},\n PRIMARY KEY ({primary_keys}));'
+        sql = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n{col_definitions}\n {primary_keys});'
 
         logging.info("Generated SQL:")
         logging.info(sql)
@@ -120,9 +175,9 @@ class CommonDB(BaseDB):
         curr = self._get_cursor()
         with self._tx():
             curr.execute(sql)
-        self.tables[table_name] = self._set_table_info(data, common_fields=common_fields)
+            self.tables[table_name] = self._set_table_info(data, common_fields=common_fields)
 
-    def _set_table_info(self, data: Any, common_fields: Fields) -> str:
+    def _set_table_info(self, data: Any, common_fields: Fields) -> str | Dict[str, str]:
         """
         把 data 的类型存储起来。
         """
@@ -137,31 +192,54 @@ class CommonDB(BaseDB):
         );
         """)
         cur.fetchall()
-        with self._tx():
-            cur.execute(f"""
-            INSERT OR REPLACE INTO DataFrame_infos (table_name, column_name, data_type)
-            VALUES (?, ?, ?);            
-            """, (table_name, "data", type(data).__name__))
+        cur.execute(f"""
+        INSERT OR REPLACE INTO DataFrame_infos (table_name, column_name, data_type)
+        VALUES (?, ?, ?);            
+        """, (table_name, "data", type(data).__name__))
+        
+        if isinstance(data, pd.DataFrame):
+            cur.execute(f"PRAGMA table_info({table_name});")
+            cols = cur.fetchall()
+            for col, dtype in data.dtypes.items():
+                cur.execute("""
+                INSERT OR REPLACE INTO DataFrame_infos (table_name, column_name, data_type)
+                VALUES (?, ?, ?);
+                """, (table_name, col, str(dtype)))
+                if col not in [c["name"] for c in cols]:
+                    logging.warning(f"Column '{col}' not found in table '{table_name}' during _set_table_info.")
+                    cur.execute(f"""
+                    ALTER TABLE {table_name}
+                    ADD COLUMN "{col}" {_pandas_dtype_to_sqlite_type(dtype)};
+                    """)
 
         return self._get_table_info(common_fields=common_fields)
 
-    def _get_table_info(self, common_fields: Fields) -> str:
+    def _get_table_info(self, common_fields: Fields) -> str | Dict[str, str]:
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
         cur = self._get_cursor()
         try:
             cur.execute(f"""
             SELECT * FROM DataFrame_infos
-            WHERE table_name = ?;
+            WHERE table_name = ? AND column_name = 'data';
             """, (table_name,))
         except sqlite3.OperationalError:
             return ""
         rows = cur.fetchall()
         if len(rows) == 0: return ""
-        elif len(rows)  == 1:
-            return rows[0]["data_type"]
+        elif len(rows) == 1:
+            data_type = rows[0]['data_type']
+            if data_type == "DataFrame":
+                cur.execute(f"""
+                SELECT column_name, data_type FROM DataFrame_infos
+                WHERE table_name = ? AND column_name != 'data';
+                """, (table_name,))
+                rows = cur.fetchall()
+                dtype_map = {row['column_name']: row['data_type'] for row in rows}
+                return dtype_map
+            else:
+                return data_type
         else:
-            raise ValueError(f"查询到多条表信息，无法唯一确定一条记录：{rows}")
-
+            raise ValueError(f"查询到多条数据，无法唯一确定表信息：{rows}")
 
 @dataclass(frozen=True)
 class CacheConfig:

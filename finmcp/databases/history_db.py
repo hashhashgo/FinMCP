@@ -83,12 +83,12 @@ class IntervalDB(BaseDB):
             cur = self._get_cursor()
 
             # 1. 查出所有与新区间 [start_ts, end_ts) 有交集的旧区间
+            cond = " AND ".join([f"{k} = ?" for k in key_fields.keys()]) + " AND " if key_fields else ""
             cur.execute(f"""
                 SELECT id, start_ts, end_ts
                 FROM {table_name}
-                WHERE 
-                    {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
-                    AND end_ts   >= ?
+                WHERE {cond}
+                    end_ts   >= ?
                     AND start_ts <= ?
                 ORDER BY start_ts
             """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], start_ts, end_ts))
@@ -141,12 +141,12 @@ class IntervalDB(BaseDB):
         cur = self._get_cursor()
 
         # 1. 查出所有和 [qs, qe) 有交集的已缓存区间
+        cond = " AND ".join([f"{k} = ?" for k in key_fields.keys()]) + " AND " if key_fields else ""
         cur.execute(f"""
             SELECT start_ts, end_ts
             FROM {table_name}
-            WHERE 
-                {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
-                AND end_ts   > ?
+            WHERE {cond} 
+                end_ts   > ?
                 AND start_ts < ?
             ORDER BY start_ts
         """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()], start_ts, end_ts))
@@ -190,11 +190,11 @@ class IntervalDB(BaseDB):
 
         cur = self._get_cursor()
 
+        cond = f"WHERE {' AND '.join([f'{k} = ?' for k in key_fields.keys()])}" if key_fields else ""
         cur.execute(f"""
             SELECT start_ts, end_ts
             FROM {table_name}
-            WHERE
-                {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
+            {cond}
             ORDER BY start_ts
         """, (*[_python_value_to_sqlite_value(v) for v in key_fields.values()],))
 
@@ -284,16 +284,17 @@ class HistoryDB(BaseDB):
         cur = self._get_cursor()
         if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         if not self.tables.get(table_name): return pd.DataFrame([])  # 表不存在，且本次也没数据，直接返回空表
+        cond = f"AND {' AND '.join([f'{k} = ?' for k in key_fields.keys()])}" if key_fields else ""
         cur.execute(f"""
             SELECT * FROM {table_name}
             WHERE date >= ? AND date < ?
-                AND {" AND ".join([f"{k} = ?" for k in key_fields.keys()])}
+            {cond}
             ORDER BY date DESC;
         """, (_datetime_to_timestamp(start), _datetime_to_timestamp(end), *[_python_value_to_sqlite_value(v) for v in key_fields.values()]))
         rows = cur.fetchall()
         df = pd.DataFrame(rows, columns=rows[0].keys() if rows else [])
         if not df.empty:
-            return _sqlite_value_to_pandas_value(df, type_dict=self._get_table_info(common_fields=common_fields))
+            return _sqlite_value_to_pandas_value(df, type_dict=self.tables[table_name])
         else:
             return df
 
@@ -357,10 +358,10 @@ class HistoryDB(BaseDB):
         table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
 
         assert "date" in df.columns, "DataFrame 必须包含 'date' 列作为主键"
-        cols = [f'"{k}" {_python_type_to_sqlite_type(type(v).__name__)}' for k, v in key_fields.items()]
+        cols = set([f'"{k}" {_python_type_to_sqlite_type(type(v).__name__)}' for k, v in key_fields.items()])
         for col, dtype in df.dtypes.items():
             sql_type = _pandas_dtype_to_sqlite_type(dtype)
-            cols.append(f'"{col}" {sql_type}')
+            cols.add(f'"{col}" {sql_type}')
         primary_keys = ", ".join([f'"{k}"' for k in key_fields.keys()] + ['"date"'])
 
         col_definitions = ",\n".join(cols)
