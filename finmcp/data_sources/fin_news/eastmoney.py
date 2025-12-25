@@ -94,6 +94,8 @@ class EastMoneyNewsDataSource(NewsDataSource):
             if datetime.strptime(data[-1]['date'], "%Y-%m-%d %H:%M:%S").astimezone() < start_dt:
                 break
         df = pd.DataFrame(everything)
+        df['title'] = df['title'].apply(self._remove_html_tags)
+        df['content'] = df['content'].apply(self._remove_html_tags)
         if not df.empty:
             df['date'] = pd.to_datetime(df['date']).dt.tz_localize('Asia/Shanghai')
             df = df[(df['date'] >= start_dt) & (df['date'] < end_dt)]
@@ -119,6 +121,11 @@ class EastMoneyNewsDataSource(NewsDataSource):
         for block in main_block:
             sl.append(etree.tostring(block, encoding='utf-8', method='text').decode('utf-8').strip())
         return "\n".join(sl)
+    
+    def _remove_html_tags(self, text: str) -> str:
+        parser = etree.HTMLParser()
+        tree = etree.fromstring(f"<div>{text}</div>", parser)
+        return etree.tostring(tree, encoding='utf-8', method='text').decode('utf-8').strip()
 
     def _map_sorting_method(self, sorting: SortingMethod) -> str:
         if sorting == SortingMethod.DEFAULT:
