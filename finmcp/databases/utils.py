@@ -65,10 +65,6 @@ def _timestamp_to_datetime(ts: int) -> datetime:
 def _datetime_to_timestamp(dt: datetime) -> int:
     return int(dt.timestamp() * 1000000)
 
-def _get_table_name(base: str, common_fields: Fields) -> str:
-    hashed_name = sha1(("-".join([str(v) for v in common_fields.values()])).encode()).hexdigest()
-    return f"{base}_{hashed_name}"
-
 def _json_serialize(obj: Any) -> str:
     if isinstance(obj, str):
         return obj
@@ -126,7 +122,6 @@ __all__ = [
     "_pandas_dtype_to_sqlite_type",
     "_timestamp_to_datetime",
     "_datetime_to_timestamp",
-    "_get_table_name",
     "_json_serialize",
     "_pandas_value_to_sqlite_value",
     "_sqlite_value_to_pandas_value",

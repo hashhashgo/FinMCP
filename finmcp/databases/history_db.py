@@ -22,13 +22,13 @@ class IntervalDB(BaseDB):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename + "_intervals"
-        self.tables = set()
+        self.tables = {}
 
 
     def _init_schema(self, key_fields: Fields, common_fields: Fields) -> None:
         cur = self._get_cursor()
 
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
 
         table_fields = []
         for field, value in key_fields.items():
@@ -58,7 +58,7 @@ class IntervalDB(BaseDB):
         """)
 
         self._connect().commit()
-        self.tables.add(table_name)
+        self.tables[table_name] = True
 
     # ------------------- 写缓存：插入并合并区间 -------------------
 
@@ -75,7 +75,7 @@ class IntervalDB(BaseDB):
         start_ts = _datetime_to_timestamp(start)
         end_ts = _datetime_to_timestamp(end)
 
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables:
             self._init_schema(key_fields=key_fields, common_fields=common_fields)
 
@@ -134,7 +134,7 @@ class IntervalDB(BaseDB):
         start_ts = _datetime_to_timestamp(start)
         end_ts = _datetime_to_timestamp(end)
 
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables:
             self._init_schema(key_fields=key_fields, common_fields=common_fields)
 
@@ -184,7 +184,7 @@ class IntervalDB(BaseDB):
             [(cached_start_1, cached_end_1),
              (cached_start_2, cached_end_2), ...]
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables:
             self._init_schema(key_fields=key_fields, common_fields=common_fields)
 
@@ -206,6 +206,19 @@ class IntervalDB(BaseDB):
 
         return res
 
+    def _set_table_info(self, data: Any, common_fields: Dict[str, int | str | datetime | float | bool]) -> bool:
+        return self._get_table_info(common_fields=common_fields)
+    
+    def _get_table_info(self, common_fields: Dict[str, int | str | datetime | float | bool]) -> bool:
+        table_name = self._get_table_name(common_fields=common_fields)
+        cur = self._get_cursor()
+        cur.execute(f"""
+        PRAGMA table_info({table_name});
+        """)
+        if not cur.fetchall():
+            return False
+        else:
+            return True
 
 class HistoryDB(BaseDB):
     def __init__(self, table_basename: str, db_path: str = os.getenv("DB_PATH", "history.db"), missing_threshold: int = 1):
@@ -235,7 +248,7 @@ class HistoryDB(BaseDB):
         返回值：
             符合条件的历史数据表，类型为pd.DataFrame。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
 
         start = start.astimezone()
         end = end.astimezone()
@@ -298,37 +311,12 @@ class HistoryDB(BaseDB):
         else:
             return df
        
-    def list_all_cached(self, common_fields: Fields = {}) -> List[Any]:
-        """
-        列出所有缓存的数据条目。
-
-        参数：
-            common_fields: 公共字段，如 freq 等，common_fields 作为表名的一部分
-        返回值：
-            符合条件的数据列表，类型为 pd.DataFrame。
-        """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
-
-        if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
-        if not self.tables.get(table_name):
-            return []
-
-        cur = self._get_cursor()
-
-        cur.execute(f"PRAGMA table_info({table_name});")
-        primary_keys = [row['name'] for row in cur.fetchall() if row['pk'] == 1]
-
-        cur.execute(f"""
-            SELECT {", ".join(primary_keys)} FROM {table_name};
-        """)
-        return cur.fetchall()
-
 
     def _insert_data(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields):
         """
         将 DataFrame 中的数据插入到数据库表中。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables:
             self._create_table_from_df(df, key_fields=key_fields, common_fields=common_fields)
         for i, k in enumerate(key_fields.keys()):
@@ -355,7 +343,7 @@ class HistoryDB(BaseDB):
         检查 DataFrame 的列名和 dtype 是否和数据库表结构匹配。
         """
         # 检查列名和数量
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables:
             self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         
@@ -376,15 +364,15 @@ class HistoryDB(BaseDB):
             if sql_type != db_type and not (pd.api.types.is_datetime64_any_dtype(sql_type) and pd.api.types.is_datetime64_any_dtype(db_type)):
                 raise ValueError(f"列 '{col}' 的数据类型不匹配。数据库类型：{db_type}，DataFrame 类型：{sql_type}")
 
-    def _create_table_from_df(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields) -> None:
+    def _create_table_from_df(self, data: pd.DataFrame, key_fields: Fields, common_fields: Fields) -> None:
         """
         根据 DataFrame 的列名和 dtype 自动创建 SQLite 表。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
 
-        assert "date" in df.columns, "DataFrame 必须包含 'date' 列作为主键"
+        assert "date" in data.columns, "DataFrame 必须包含 'date' 列作为主键"
         cols = set([f'"{k}" {_python_type_to_sqlite_type(type(v).__name__)}' for k, v in key_fields.items()])
-        for col, dtype in df.dtypes.items():
+        for col, dtype in data.dtypes.items():
             sql_type = _pandas_dtype_to_sqlite_type(dtype)
             cols.add(f'"{col}" {sql_type}')
         primary_keys = ", ".join([f'"{k}"' for k in key_fields.keys()] + ['"date"'])
@@ -399,13 +387,13 @@ class HistoryDB(BaseDB):
         curr = self._get_cursor()
         with self._tx():
             curr.execute(sql)
-            self.tables[table_name] = self._set_table_info(df, common_fields=common_fields)
+            self.tables[table_name] = self._set_table_info(data, common_fields=common_fields)
 
-    def _set_table_info(self, df: pd.DataFrame, common_fields: Fields) -> Dict[str, str]:
+    def _set_table_info(self, data: pd.DataFrame, common_fields: Fields) -> Dict[str, str]:
         """
         把 DataFrame 的表结构信息存储起来。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         cur = self._get_cursor()
         cur.execute("""
         CREATE TABLE IF NOT EXISTS DataFrame_infos (
@@ -418,7 +406,7 @@ class HistoryDB(BaseDB):
         cur.fetchall()
         cur.execute(f"PRAGMA table_info({table_name});")
         cols = cur.fetchall()
-        for col, dtype in df.dtypes.items():
+        for col, dtype in data.dtypes.items():
             cur.execute("""
             INSERT OR REPLACE INTO DataFrame_infos (table_name, column_name, data_type)
             VALUES (?, ?, ?);
@@ -433,7 +421,7 @@ class HistoryDB(BaseDB):
         return self._get_table_info(common_fields=common_fields)
 
     def _get_table_info(self, common_fields: Fields) -> Dict[str, str]:
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         cur = self._get_cursor()
         try:
             cur.execute(f"""

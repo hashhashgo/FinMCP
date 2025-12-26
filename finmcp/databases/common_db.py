@@ -35,7 +35,7 @@ class CommonDB(BaseDB):
         返回值：
             符合条件的数据，类型为Any。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
 
         # 最后，返回完整数据
         cur = self._get_cursor()
@@ -80,36 +80,12 @@ class CommonDB(BaseDB):
             data = rows[0]['data']
             return _sqlite_value_to_python_value(data, type_s=self.tables[table_name])
     
-    def list_all_cached(self, common_fields: Fields = {}) -> List[Any]:
-        """
-        列出所有缓存的数据条目。
-
-        参数：
-            common_fields: 公共字段，如 freq 等，common_fields 作为表名的一部分
-        返回值：
-            符合条件的数据列表，类型为 pd.DataFrame。
-        """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
-
-        if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
-        if not self.tables.get(table_name):
-            return []
-
-        cur = self._get_cursor()
-
-        cur.execute(f"PRAGMA table_info({table_name});")
-        primary_keys = [row['name'] for row in cur.fetchall() if row['pk'] == 1]
-
-        cur.execute(f"""
-            SELECT {", ".join(primary_keys)} FROM {table_name};
-        """)
-        return cur.fetchall()
 
     def _insert_data(self, data: Any, key_fields: Fields, common_fields: Fields):
         """
         将数据插入到数据库表中。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables or self.tables.get(table_name) == "":
             self._create_table_from_data(data, key_fields=key_fields, common_fields=common_fields)
 
@@ -148,7 +124,7 @@ class CommonDB(BaseDB):
         检查 data 和 dtype 是否和数据库表匹配。
         """
         # 检查列名和数量
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         if table_name not in self.tables:
             self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         
@@ -178,7 +154,7 @@ class CommonDB(BaseDB):
         """
         根据 data 自动创建 SQLite 表。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
 
         cols = set([f'"{k}" {_python_type_to_sqlite_type(type(v).__name__)}' for k, v in key_fields.items()])
         if not isinstance(data, pd.DataFrame):
@@ -206,7 +182,7 @@ class CommonDB(BaseDB):
         """
         把 data 的类型存储起来。
         """
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         cur = self._get_cursor()
         cur.execute("""
         CREATE TABLE IF NOT EXISTS DataFrame_infos (
@@ -240,7 +216,7 @@ class CommonDB(BaseDB):
         return self._get_table_info(common_fields=common_fields)
 
     def _get_table_info(self, common_fields: Fields) -> str | Dict[str, str]:
-        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+        table_name = self._get_table_name(common_fields=common_fields)
         cur = self._get_cursor()
         try:
             cur.execute(f"""
