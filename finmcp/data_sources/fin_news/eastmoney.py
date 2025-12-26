@@ -59,7 +59,7 @@ class EastMoneyNewsDataSource(NewsDataSource):
     def list_news(
         self,
         symbol: str,
-        start: str | datetime | date | int = datetime.now() - timedelta(days=30),
+        start: str | datetime | date | int = 0,
         end: str | datetime | date | int = datetime.now()
     ) -> pd.DataFrame:
         params = self.COMMON_PARAMS.copy()

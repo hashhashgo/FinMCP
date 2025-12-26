@@ -1,7 +1,7 @@
 from pyparsing import ABC
 from typing import Optional, Union
 from enum import Enum
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 
 class DataType(Enum):
@@ -46,7 +46,7 @@ class DataSource(ABC):
             datetime_output = datetime(datetime_input.year, datetime_input.month, datetime_input.day)
         elif isinstance(datetime_input, int):
             if datetime_input > 9999999999: datetime_input = datetime_input // 1000
-            datetime_output = datetime.fromtimestamp(datetime_input)
+            datetime_output = datetime.fromtimestamp(datetime_input, tz=timezone.utc)
         elif isinstance(datetime_input, str):
             for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
                 try:
