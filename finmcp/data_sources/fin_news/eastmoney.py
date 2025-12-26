@@ -30,7 +30,7 @@ class EastMoneyNewsDataSource(NewsDataSource):
             "clientVersion": "curr",
             "param": {
                 "cmsArticleWebOld": {
-                    "searchScope": "title",
+                    "searchScope": "default",
                     "sort": "time", 
                     "pageIndex": 1,
                     "pageSize": 100,

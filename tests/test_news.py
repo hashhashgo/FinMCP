@@ -15,7 +15,7 @@ def test_eastmoney_news_details():
 
 def test_eastmoney_news_list():
     ds = EastMoneyNewsDataSource()
-    df = ds.list_news("百济神州-U", start=datetime.now() - timedelta(days=30), end=datetime.now())
+    df = ds.list_news("斯达半导", start="2000-01-01", end=datetime.now())
     assert not df.empty
     assert df['date'].max() < datetime.now().astimezone()
     assert df['date'].min() >= (datetime.now() - timedelta(days=30)).astimezone()
