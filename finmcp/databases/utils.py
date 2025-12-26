@@ -3,7 +3,7 @@ import pandas as pd
 import tzlocal
 from hashlib import sha1
 from typing import Dict, Optional, Any
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timezone
 from . import Fields
 
 
@@ -60,7 +60,7 @@ def _pandas_dtype_to_sqlite_type(dtype: pd.api.extensions.ExtensionDtype) -> str
         return "TEXT"       # 默认当作 TEXT
     
 def _timestamp_to_datetime(ts: int) -> datetime:
-    return datetime.fromtimestamp(ts / 1000000).astimezone()
+    return datetime.fromtimestamp(ts / 1000000, tz=timezone.utc).astimezone()
 
 def _datetime_to_timestamp(dt: datetime) -> int:
     return int(dt.timestamp() * 1000000)
@@ -105,7 +105,7 @@ def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
         datetime_output = datetime(datetime_input.year, datetime_input.month, datetime_input.day)
     elif isinstance(datetime_input, int):
         if datetime_input > 9999999999: datetime_input = datetime_input // 1000
-        datetime_output = datetime.fromtimestamp(datetime_input)
+        datetime_output = datetime.fromtimestamp(datetime_input, tz=timezone.utc)
     elif isinstance(datetime_input, str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
             try:
