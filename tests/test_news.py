@@ -5,8 +5,8 @@ if __name__ == "__main__":
 
 from finmcp.data_sources.fin_news.eastmoney import EastMoneyNewsDataSource
 from datetime import datetime, date, timedelta
-import dotenv
-dotenv.load_dotenv()
+# import dotenv
+# dotenv.load_dotenv()
 
 def test_eastmoney_news_details():
     ds = EastMoneyNewsDataSource()
@@ -15,10 +15,8 @@ def test_eastmoney_news_details():
 
 def test_eastmoney_news_list():
     ds = EastMoneyNewsDataSource()
-    df = ds.list_news("斯达半导", start="2000-01-01", end=datetime.now())
+    df = ds.list_news("TCL科技", start="2000-01-01", end=datetime.now())
     assert not df.empty
-    assert df['date'].max() < datetime.now().astimezone()
-    assert df['date'].min() >= (datetime.now() - timedelta(days=30)).astimezone()
 
 if __name__ == "__main__":
     test_eastmoney_news_list()

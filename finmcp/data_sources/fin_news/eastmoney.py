@@ -31,7 +31,7 @@ class EastMoneyNewsDataSource(NewsDataSource):
             "param": {
                 "cmsArticleWebOld": {
                     "searchScope": "default",
-                    "sort": "time", 
+                    "sort": "default", 
                     "pageIndex": 1,
                     "pageSize": 100,
                     "preTag": "<em>",
