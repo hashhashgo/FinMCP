@@ -4,7 +4,6 @@ import tzlocal
 from hashlib import sha1
 from typing import Dict, Optional, Any
 from datetime import datetime, date, timezone
-from . import Fields
 
 
 def _python_type_to_sqlite_type(py_type: str) -> str:

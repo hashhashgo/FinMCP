@@ -22,7 +22,7 @@ import dotenv
 import pandas as pd
 import tushare
 
-dotenv.load_dotenv(dotenv.find_dotenv())
+dotenv.load_dotenv()
 pro = tushare.pro_api(os.getenv("TUSHARE_API_KEY", ""))
 
 @common_cache(
@@ -43,15 +43,27 @@ def test_common_cache():
     df = index_basic()
     assert not df.empty
 
+def test_select_all():
+    from finmcp.data_sources.fin_news import DATASOURCES
+    from finmcp.databases.common_db import DB_CONNECTIONS
+    assert "finmcp.data_sources.fin_news.eastmoney:EastMoneyNewsDataSource.news_details" in DB_CONNECTIONS
+    db = DB_CONNECTIONS['finmcp.data_sources.fin_news.eastmoney:EastMoneyNewsDataSource.news_details']
+    all_keys = db.list_all_cached()
+    assert len(all_keys) > 0
+    all_data = db.select_by_primary_keys(all_keys)
+    assert len(all_data) == len(all_keys)
+
 
 if __name__ == "__main__":
-    import time, tqdm
-    start = time.time()
-    for _ in tqdm.trange(200): test_common_cache()
-    end = time.time()
-    print(f"Elapsed time for 200 runs: {end - start} seconds")
+    test_select_all()
+    test_common_cache()
+    # import time, tqdm
+    # start = time.time()
+    # for _ in tqdm.trange(200): test_common_cache()
+    # end = time.time()
+    # print(f"Elapsed time for 200 runs: {end - start} seconds")
 
-    start = time.time()
-    for _ in tqdm.trange(200): pro.index_basic()
-    end = time.time()
-    print(f"Elapsed time for clearing cache 200 times: {end - start} seconds")
+    # start = time.time()
+    # for _ in tqdm.trange(200): pro.index_basic()
+    # end = time.time()
+    # print(f"Elapsed time for clearing cache 200 times: {end - start} seconds")

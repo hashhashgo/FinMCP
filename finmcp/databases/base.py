@@ -7,6 +7,8 @@ from pyparsing import ABC, abstractmethod
 
 from contextvars import ContextVar
 
+from .utils import _python_value_to_sqlite_value
+
 
 Fields = Dict[str, int | str | datetime | float | bool]
 
@@ -34,14 +36,45 @@ class BaseDB(ABC):
         if not self.tables.get(table_name):
             return []
 
+        primary_keys = self._get_primary_keys(common_fields=common_fields)
+
         cur = self._get_cursor()
-
-        cur.execute(f"PRAGMA table_info({table_name});")
-        primary_keys = [row['name'] for row in cur.fetchall() if row['pk'] == 1]
-
         cur.execute(f"""
             SELECT {", ".join(primary_keys)} FROM {table_name};
         """)
+        return cur.fetchall()
+    
+    def select_by_primary_keys(self, keys: List[Dict[str, Any]], common_fields: Fields = {}) -> List[Any]:
+        """
+        根据主键列表查询缓存的数据条目。
+
+        参数：
+            keys: 主键列表，每个主键为一个字典，包含主键字段及其对应的值。
+            common_fields: 公共字段，如 freq 等，common_fields 作为表名的一部分
+        返回值：
+            符合条件的数据列表。
+        """
+        table_name = self._get_table_name(common_fields=common_fields)
+
+        if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
+        if not self.tables.get(table_name):
+            return []
+
+        primary_keys = self._get_primary_keys(common_fields=common_fields)
+        for each in primary_keys:
+            assert each in keys[0].keys(), f"主键字段 {each} 不在提供的 keys 中。"
+
+        all_values = []
+        for each in keys:
+            value_tuple = ", ".join([str(_python_value_to_sqlite_value(each[pk])) for pk in primary_keys])
+            all_values.append(f"({value_tuple})")
+        
+        sql = f"""
+WITH temp_keys({",".join(primary_keys)}) AS ( VALUES {",".join(all_values)} )
+SELECT * FROM "{table_name}" JOIN temp_keys USING ({",".join(primary_keys)});
+        """
+        cur = self._get_cursor()
+        cur.execute(sql)
         return cur.fetchall()
 
     def _connect(self) -> sqlite3.Connection:
@@ -88,6 +121,13 @@ class BaseDB(ABC):
     def _get_table_name(self, common_fields: Fields) -> str:
         hashed_name = sha1(("-".join([str(v) for v in common_fields.values()])).encode()).hexdigest()
         return f"{self.table_basename}_{hashed_name}"
+    
+    def _get_primary_keys(self, common_fields: Fields) -> List[str]:
+        table_name = self._get_table_name(common_fields=common_fields)
+        cur = self._get_cursor()
+        cur.execute(f"PRAGMA table_info({table_name});")
+        primary_keys = [row['name'] for row in cur.fetchall() if row['pk'] == 1]
+        return primary_keys
 
     @abstractmethod
     def _set_table_info(self, data: Any, common_fields: Fields) -> str | Dict[str, str] | bool:
