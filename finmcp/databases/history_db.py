@@ -297,6 +297,31 @@ class HistoryDB(BaseDB):
             return _sqlite_value_to_pandas_value(df, type_dict=self.tables[table_name])
         else:
             return df
+       
+    def list_all_cached(self, common_fields: Fields = {}) -> List[Any]:
+        """
+        列出所有缓存的数据条目。
+
+        参数：
+            common_fields: 公共字段，如 freq 等，common_fields 作为表名的一部分
+        返回值：
+            符合条件的数据列表，类型为 pd.DataFrame。
+        """
+        table_name = _get_table_name(base=self.table_basename, common_fields=common_fields)
+
+        if not self.tables.get(table_name): self.tables[table_name] = self._get_table_info(common_fields=common_fields)
+        if not self.tables.get(table_name):
+            return []
+
+        cur = self._get_cursor()
+
+        cur.execute(f"PRAGMA table_info({table_name});")
+        primary_keys = [row['name'] for row in cur.fetchall() if row['pk'] == 1]
+
+        cur.execute(f"""
+            SELECT {", ".join(primary_keys)} FROM {table_name};
+        """)
+        return cur.fetchall()
 
 
     def _insert_data(self, df: pd.DataFrame, key_fields: Fields, common_fields: Fields):
