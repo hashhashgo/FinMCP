@@ -6,6 +6,8 @@ from typing import Literal, List, Dict, Any
 import os
 import sys
 from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
 from importlib.resources import files
 
@@ -74,7 +76,7 @@ def history(
         except ValueError:
             raise ValueError(f"Unknown frequency: {freq}\n\nSupported frequencies: {' / '.join([f.value for f in DataFrequency])}")
 
-        print(f"Fetching history: datasource={datasource}, symbol={symbol}, type={type}, start={start}, end={end}, freq={freq}, only_standard_columns={only_standard_columns}")
+        logger.info(f"Fetching history: datasource={datasource}, symbol={symbol}, type={type}, start={start}, end={end}, freq={freq}, only_standard_columns={only_standard_columns}")
 
         df: pd.DataFrame = ds.history(
             symbol=symbol,
@@ -119,7 +121,7 @@ Returns: List of dictionaries, each containing:
 """
 )
 def list_indices() -> List[Dict[str, str]]:
-    print("Listing known financial indices")
+    logger.info("Listing known financial indices")
     df = pd.read_csv(files("finmcp").joinpath("data/known_indices.csv").open(encoding="utf-8"))
     df = df[['name', 'type'] + list(DATASOURCES.keys())]
     ret = []

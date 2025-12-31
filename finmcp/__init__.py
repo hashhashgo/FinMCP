@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple
 from .ping_client import PingClient
 
 import logging
+logger = logging.getLogger(__name__)
 
 
 CONNECTION_RECORD_FILE = os.getenv("CONNECTION_RECORD_FILE", "agent_tools_service_ports.json")
@@ -44,7 +45,7 @@ def _discover_services() -> None:
         try:
             obj = ep.load()
         except Exception:
-            logging.warning(f"Failed to load MCP service entry point: {ep.name}", exc_info=True)
+            logger.warning(f"Failed to load MCP service entry point: {ep.name}", exc_info=True)
             continue
 
         if not isinstance(obj, FastMCP):
@@ -70,25 +71,25 @@ def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, t
         _discover_services()
     global MCP_CONNECTIONS
     if MCP_PROCESSES:
-        print("MCP services are already running.")
+        logger.info("MCP services are already running.")
         check_services_running(test_max_retries, test_timeout)
         return
     if MCP_CONNECTIONS:
-        print("MCP services connections already exist. Assuming services are running.")
+        logger.info("MCP services connections already exist. Assuming services are running.")
         check_services_running(test_max_retries, test_timeout)
         return
     if os.getenv("START_SERVICES_INTERNAL", "false").lower() == "true" or start_anyway:
-        print("Starting MCP services...")
+        logger.info("Starting MCP services...")
         current_port = 8000
         for mcp_service in MCP_SERVICES:
-            print(f"Starting MCP service: {mcp_service}")
+            logger.info(f"Starting MCP service: {mcp_service}")
             while current_port < 9000:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     try:
                         s.bind((MCP_HOST, current_port))
                         break
                     except OSError:
-                        print(f"Port {current_port} is in use, trying next port...")
+                        logger.info(f"Port {current_port} is in use, trying next port...")
                         current_port += 1
             MCP_PROCESSES[mcp_service] = Process(target=_run_service, args=(mcp_service, current_port))
             MCP_PROCESSES[mcp_service].daemon = True
@@ -97,12 +98,12 @@ def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, t
                 transport="streamable_http",
                 url=f"http://{MCP_HOST}:{current_port}/mcp",
             )
-            print(f"MCP service {mcp_service} is running on port {current_port}")
+            logger.info(f"MCP service {mcp_service} is running on port {current_port}")
             current_port += 1
         with open(CONNECTION_RECORD_FILE, "w") as f:
             json.dump(MCP_CONNECTIONS, f, indent=4)
     else:
-        print("Skipping MCP services startup as per configuration.")
+        logger.info("Skipping MCP services startup as per configuration.")
     check_services_running(test_max_retries, test_timeout)
 
 def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) -> None:
@@ -128,15 +129,15 @@ def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) ->
                 raise RuntimeError(f"MCP service {mcp_service} failed to connect after {test_max_retries} retries.")
         if all_running:
             break
-    print("All MCP services are up and running.")
+    logger.info("All MCP services are up and running.")
 
 def close_all_services() -> None:
     if not MCP_PROCESSES:
         MCP_CONNECTIONS.clear()
         return
-    print("Closing all MCP services...")
+    logger.info("Closing all MCP services...")
     for mcp_service, process in MCP_PROCESSES.items():
-        print(f"Terminating MCP service: {mcp_service}")
+        logger.info(f"Terminating MCP service: {mcp_service}")
         try:
             process.terminate()
             process.join()
@@ -144,10 +145,10 @@ def close_all_services() -> None:
             with open(CONNECTION_RECORD_FILE, "w") as f:
                 json.dump(MCP_CONNECTIONS, f, indent=4)
         except Exception as e:
-            print(f"Error terminating MCP service {mcp_service}: {e}")
+            logger.error(f"Error terminating MCP service {mcp_service}: {e}")
     MCP_PROCESSES.clear()
     MCP_CONNECTIONS.clear()
-    print("All MCP services have been closed.")
+    logger.info("All MCP services have been closed.")
     if not json.load(open(CONNECTION_RECORD_FILE)):
         os.remove(CONNECTION_RECORD_FILE)
 

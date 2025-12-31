@@ -2,11 +2,13 @@ from . import start_all_services, close_all_services, MCP_CONNECTIONS
 from .ping_client import PingClient
 import time
 from signal import signal, SIGINT, SIGTERM
+import logging
+logger = logging.getLogger(__name__)
 
 running = True
 def stop_services(signum, frame):
     global running
-    print("Stopping all MCP services...")
+    logger.info("Stopping all MCP services...")
     running = False
     close_all_services()
     exit(0)
@@ -22,7 +24,7 @@ if __name__ == "__main__":
         for mcp_service in MCP_CONNECTIONS:
             try:
                 connections[mcp_service].ping_connection()
-                print(f"Pinged service {mcp_service} successfully.")
+                logger.info(f"Pinged service {mcp_service} successfully.")
             except Exception as e:
-                print(f"Error pinging connection: {e}")
+                logger.error(f"Error pinging connection: {e}")
         time.sleep(10)

@@ -6,6 +6,8 @@ from typing import Literal, List, Dict, Any
 import os
 import sys
 from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
 from importlib.resources import files
 
@@ -64,7 +66,7 @@ def list_news(
             datasources[datasource] = DATASOURCES[datasource]()
         ds = datasources[datasource]
 
-        print(f"Fetching news: datasource={datasource}, symbol={symbol}, start={start}, end={end}")
+        logger.info(f"Fetching news: datasource={datasource}, symbol={symbol}, start={start}, end={end}")
 
         df: pd.DataFrame = ds.list_news(
             symbol=symbol,
@@ -113,7 +115,7 @@ def news_details(
     
     ds = datasources[datasource]
 
-    print(f"Fetching news details for code: {code}")
+    logger.info(f"Fetching news details for code: {code}")
 
     return ds.news_details(code=code)
 

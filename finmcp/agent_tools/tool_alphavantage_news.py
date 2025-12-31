@@ -156,7 +156,7 @@ class AlphaVantageNewsTool:
             feed = json_data.get("feed", [])
             
             if not feed:
-                print(f"⚠️ Alpha Vantage API returned empty feed")
+                logger.warning(f"⚠️ Alpha Vantage API returned empty feed")
                 return []
 
             return feed[:params["limit"]]
@@ -185,7 +185,7 @@ class AlphaVantageNewsTool:
         Returns:
             List of filtered news articles
         """
-        print(f"Searching Alpha Vantage news: query={query}, tickers={tickers}, topics={topics}")
+        logger.info(f"Searching Alpha Vantage news: query={query}, tickers={tickers}, topics={topics}")
 
         # Get today's date for filtering
         today_date = os.getenv("TODAY_DATE", None)
@@ -205,12 +205,12 @@ class AlphaVantageNewsTool:
                 # Set time_from to 30 days before time_to (API may require both parameters)
                 time_from_datetime = today_datetime - timedelta(days=30)
                 time_from = time_from_datetime.strftime("%Y%m%dT%H%M")
-                print(f"Filtering articles published before: {today_date} (API format: time_from={time_from}, time_to={time_to})")
+                logger.info(f"Filtering articles published before: {today_date} (API format: time_from={time_from}, time_to={time_to})")
             except Exception as e:
                 logger.error(f"Failed to parse TODAY_DATE: {e}")
-                print("⚠️ Failed to parse TODAY_DATE, returning all results without date filtering")
+                logger.warning("⚠️ Failed to parse TODAY_DATE, returning all results without date filtering")
         else:
-            print("⚠️ TODAY_DATE not set, returning all results without date filtering")
+            logger.warning("⚠️ TODAY_DATE not set, returning all results without date filtering")
 
         # Fetch articles with date filtering via API
         all_articles = self._fetch_news(
@@ -221,7 +221,7 @@ class AlphaVantageNewsTool:
             sort="LATEST",
         )
 
-        print(f"Found {len(all_articles)} articles after API filtering")
+        logger.info(f"Found {len(all_articles)} articles after API filtering")
         return all_articles
 
 

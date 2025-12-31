@@ -14,6 +14,8 @@ from seleniumwire import webdriver
 from seleniumwire.request import Request, Response
 import pandas as pd
 import os
+import logging
+logger = logging.getLogger(__name__)
 
 from typing import Optional, Union
 
@@ -118,7 +120,7 @@ class InvestingComDataSource(OHLCDataSource):
         url = f"https://www.investing.com/{type}/{name}"
         response = requests.get(url, headers=self.headers)
         if response.status_code == 403:
-            print("Access forbidden. You may need to implement human verification to obtain cookies.")
+            logger.warning("Access forbidden. You may need to implement human verification to obtain cookies.")
             self.driver.maximize_window()
             res = self.driver_get(url)
             self.driver.minimize_window()

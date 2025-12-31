@@ -2,11 +2,13 @@ from . import start_all_services, close_all_services, MCP_CONNECTIONS
 import time
 from signal import signal, SIGINT, SIGTERM
 import requests
+import logging
+logger = logging.getLogger(__name__)
 
 running = True
 def stop_services(signum, frame):
     global running
-    print("Stopping all MCP services...")
+    logger.info("Stopping all MCP services...")
     running = False
     close_all_services()
     exit(0)
@@ -32,8 +34,8 @@ def init_connection(url, id = 1):
     }
     resp = requests.post(url, json=init_payload, headers=headers, timeout=5)
     resp.raise_for_status()
-    # print(resp.headers)
-    # print(resp.text)
+    # logger.info(resp.headers)
+    # logger.info(resp.text)
     headers['mcp-session-id'] = resp.headers.get('mcp-session-id', '')
     requests.post(url, json={
         "jsonrpc": "2.0",
@@ -71,7 +73,7 @@ if __name__ == "__main__":
         for mcp_service in MCP_CONNECTIONS:
             try:
                 ping_connection(connections[mcp_service])
-                print(f"Pinged service {mcp_service} successfully.")
+                logger.info(f"Pinged service {mcp_service} successfully.")
             except Exception as e:
-                print(f"Error pinging connection: {e}")
+                logger.error(f"Error pinging connection: {e}")
         time.sleep(10)

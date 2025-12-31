@@ -1,4 +1,6 @@
 import requests
+import logging
+logger = logging.getLogger(__name__)
 
 class PingClient:
     
@@ -50,7 +52,7 @@ class PingClient:
             resp.raise_for_status()
         except Exception as e:
             self.connected = False
-            print(f"Ping failed: {e}")
+            logger.error(f"Ping failed: {e}")
             return False
         return True
 

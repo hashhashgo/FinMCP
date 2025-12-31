@@ -5,6 +5,9 @@ import inspect
 from pathlib import Path
 from typing import Type, Dict
 
+import logging
+logger = logging.getLogger(__name__)
+
 DATASOURCES: Dict[str, Type[OHLCDataSource]] = {}
 
 def _discover_datasource_classes():
@@ -28,9 +31,9 @@ def _discover_datasource_classes():
             if issubclass(obj, OHLCDataSource) and obj is not OHLCDataSource:
                 key = getattr(obj, "name", obj.__name__)
                 if key == "base":
-                    print(f"Warning: OHLCDataSource subclass in {full_name} has reserved name 'base'.")
-                    print("Please rename it to avoid conflicts.")
-                    print("Skipping registration of this class.")
+                    logger.warning(f"OHLCDataSource subclass in {full_name} has reserved name 'base'.")
+                    logger.warning("Please rename it to avoid conflicts.")
+                    logger.warning("Skipping registration of this class.")
                     continue
                 if key in DATASOURCES:
                     raise ValueError(f"Duplicate OHLCDataSource name detected: {key} in {obj.__name__} and {DATASOURCES[key].__name__}")

@@ -114,17 +114,17 @@ class WebScrapingJinaTool:
             raise ValueError("Jina API key not provided! Please set JINA_API_KEY environment variable.")
 
     def __call__(self, query: str) -> List[Dict[str, Any]]:
-        print(f"Searching for {query}")
+        logger.info(f"Searching for {query}")
         all_urls = self._jina_search(query)
         return_content = []
-        print(f"Found {len(all_urls)} URLs")
+        logger.info(f"Found {len(all_urls)} URLs")
         if len(all_urls) > 1:
             # Randomly select three to form new all_urls
             all_urls = random.sample(all_urls, 1)
         for url in all_urls:
-            print(f"Scraping {url}")
+            logger.info(f"Scraping {url}")
             return_content.append(self._jina_scrape(url))
-            print(f"Scraped {url}")
+            logger.info(f"Scraped {url}")
 
         return return_content
 
@@ -172,11 +172,11 @@ class WebScrapingJinaTool:
 
             # Check if response data is valid
             if json_data is None:
-                print(f"⚠️ Jina API returned empty data, query: {query}")
+                logger.warning(f"⚠️ Jina API returned empty data, query: {query}")
                 return []
 
             if "data" not in json_data:
-                print(f"⚠️ Jina API response format abnormal, query: {query}, response: {json_data}")
+                logger.warning(f"⚠️ Jina API response format abnormal, query: {query}, response: {json_data}")
                 return []
 
             all_urls = []
@@ -203,20 +203,20 @@ class WebScrapingJinaTool:
                         filtered_urls.append(item["url"])
                 else:
                     # If TODAY_DATE is not set, keep all results
-                    print("⚠️ TODAY_DATE not set, skipping date filtering.")
+                    logger.warning("⚠️ TODAY_DATE not set, skipping date filtering.")
                     filtered_urls.append(item["url"])
 
-            print(f"Found {len(filtered_urls)} URLs after filtering")
+            logger.info(f"Found {len(filtered_urls)} URLs after filtering")
             return filtered_urls
 
         except requests.exceptions.RequestException as e:
-            print(f"❌ Jina API request failed: {e}")
+            logger.error(f"❌ Jina API request failed: {e}")
             return []
         except ValueError as e:
-            print(f"❌ Jina API response parsing failed: {e}")
+            logger.error(f"❌ Jina API response parsing failed: {e}")
             return []
         except Exception as e:
-            print(f"❌ Jina search unknown error: {e}")
+            logger.error(f"❌ Jina search unknown error: {e}")
             return []
 
 

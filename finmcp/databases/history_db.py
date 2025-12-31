@@ -14,6 +14,7 @@ from pyparsing import wraps
 from . import BaseDB, Fields, DB_CONNECTIONS
 
 import logging
+logger = logging.getLogger(__name__)
 
 from .utils import *
 
@@ -255,7 +256,7 @@ class HistoryDB(BaseDB):
 
         missing = self._interval_db.get_missing(key_fields=key_fields, common_fields=common_fields, start=start, end=end)
         if len(missing) > self.missing_threshold:
-            logging.debug(f"[HistoryDB]: 发现表 {table_name} 中有 {len(missing)} 个缺失区间，超过阈值 {self.missing_threshold}，采用整块下载。")
+            logger.debug(f"[HistoryDB]: 发现表 {table_name} 中有 {len(missing)} 个缺失区间，超过阈值 {self.missing_threshold}，采用整块下载。")
             assert callback is not None, "需要提供 callback 函数以下载缺失数据"
             arguments: Dict[str, Any] = {}
             arguments.update(key_fields)
@@ -274,7 +275,7 @@ class HistoryDB(BaseDB):
                                                start=missing[0][0], end=(data["date"].max() + pd.Timedelta(microseconds=1)).to_pydatetime())
         elif len(missing) > 0:
             for (ms, me) in missing:
-                logging.debug(f"[HistoryDB]: 发现表 {table_name} 中缺失区间 [{ms} - {me})，采用分块下载。")
+                logger.debug(f"[HistoryDB]: 发现表 {table_name} 中缺失区间 [{ms} - {me})，采用分块下载。")
                 assert callback is not None, "需要提供 callback 函数以下载缺失数据"
                 arguments: Dict[str, Any] = {}
                 arguments.update(key_fields)
@@ -348,7 +349,7 @@ class HistoryDB(BaseDB):
             self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         
         if not self.tables.get(table_name):
-            print(self.tables[table_name], f"数据库表 {table_name} 不存在，跳过。")
+            logger.debug(self.tables[table_name], f"数据库表 {table_name} 不存在，跳过。")
             return
 
         # 检查数据类型
@@ -381,8 +382,8 @@ class HistoryDB(BaseDB):
 
         sql = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n{col_definitions},\n PRIMARY KEY ({primary_keys}));'
 
-        logging.info("Generated SQL:")
-        logging.info(sql)
+        logger.debug("Generated SQL:")
+        logger.debug(sql)
 
         curr = self._get_cursor()
         with self._tx():
@@ -412,7 +413,7 @@ class HistoryDB(BaseDB):
             VALUES (?, ?, ?);
             """, (table_name, col, str(dtype)))
             if col not in [c["name"] for c in cols]:
-                logging.warning(f"Column '{col}' not found in table '{table_name}' during _set_table_info.")
+                logger.warning(f"Column '{col}' not found in table '{table_name}' during _set_table_info.")
                 cur.execute(f"""
                 ALTER TABLE {table_name}
                 ADD COLUMN "{col}" {_pandas_dtype_to_sqlite_type(dtype)};

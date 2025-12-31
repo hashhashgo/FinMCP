@@ -12,6 +12,7 @@ from . import BaseDB, Fields, DB_CONNECTIONS
 from .utils import *
 
 import logging
+logger = logging.getLogger(__name__)
 
 
 class CommonDB(BaseDB):
@@ -129,7 +130,7 @@ class CommonDB(BaseDB):
             self.tables[table_name] = self._get_table_info(common_fields=common_fields)
         
         if not self.tables.get(table_name):
-            print(self.tables[table_name], f"数据库表 {table_name} 不存在，跳过。")
+            logger.debug(self.tables[table_name], f"数据库表 {table_name} 不存在，跳过。")
             return
 
         # 检查数据类型
@@ -170,8 +171,8 @@ class CommonDB(BaseDB):
 
         sql = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n{col_definitions}\n {primary_keys});'
 
-        logging.info("Generated SQL:")
-        logging.info(sql)
+        logger.debug("Generated SQL:")
+        logger.debug(sql)
 
         curr = self._get_cursor()
         with self._tx():
@@ -207,7 +208,7 @@ class CommonDB(BaseDB):
                 VALUES (?, ?, ?);
                 """, (table_name, col, str(dtype)))
                 if col not in [c["name"] for c in cols]:
-                    logging.warning(f"Column '{col}' not found in table '{table_name}' during _set_table_info.")
+                    logger.warning(f"Column '{col}' not found in table '{table_name}' during _set_table_info.")
                     cur.execute(f"""
                     ALTER TABLE {table_name}
                     ADD COLUMN "{col}" {_pandas_dtype_to_sqlite_type(dtype)};
