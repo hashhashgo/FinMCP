@@ -1,134 +1,161 @@
 Languages: English | [中文](README.zh_CN.md)
 
+---
+
 # Introduction
 
-**finmcp** is a lightweight framework for **unified management of multiple MCP (Model Context Protocol) services**.
-It is designed for LLM-centered financial data analysis tasks, such as:
+**FinTools** is a financial data and analysis toolkit designed to unify and manage reusable financial tools and data interfaces.
 
-* Retrieving historical data for stocks, indices, futures, and foreign exchange
-* Fetching news and textual information
-* Performing web searches
-* Managing custom MCP services provided by users
+It provides a collection of directly callable, function-level tools, and can optionally expose them to LLM / Agent systems via MCP (Model Context Protocol).
 
-finmcp includes several built-in financial MCP services and also allows users to extend additional MCP services via `entry_points`, so they can be managed alongside the built-in ones.
+The goal of FinTools is to serve as a lightweight, composable, and reusable collection of financial tools.
+
+---
+
+## Types of Tools Provided
+
+FinTools currently includes (and continues to expand) the following types of tools:
+
+* Retrieval of historical market data for stocks, indices, futures, and FX
+* Access to financial news, announcements, and other text-based information
+* Web search and external information retrieval
+* User-defined financial data or analytical logic
+* Optional MCP interfaces for LLM usage
+
+---
+
+## MCP Support (Optional)
+
+FinTools can act as a manager and launcher for MCP services, but MCP is only one of the supported integration methods:
+
+* You may completely skip MCP and directly call tools in Python
+* Or use MCP to expose these tools to LLMs, LangChain, or multi-agent systems
+
+FinTools ships with some built-in financial MCP services and also supports plugin-based extension of additional MCP services via `entry_points`.
 
 ---
 
 # Features
 
-* **Unified MCP Service Management**
-  Centralized startup, shutdown, and connection tracking for multiple FastMCP instances.
-* **Plugin-based Service Extension (entry_points)**
-  Users can register their own FastMCP instances without modifying finmcp’s source code.
-* **Automatic Port Assignment & Connection Recording**
-  All services write their assigned URLs into a connection record file after startup.
-* **Service Health Check (Ping Mode)**
-  When launched via `uv run -m finmcp`, the framework automatically pings all MCP services every 10 seconds and prints status logs.
-* **Seamless LangChain / MultiServerMCPClient Integration**
-  All MCP service URLs are directly available through `MCP_CONNECTIONS`.
+## Toolkit-Oriented Design
+
+* All functionality is centered around tools
+* Tools are independently usable, composable, and reusable
+* No mandatory dependency on agents, frameworks, or runtimes
+
+## Plugin-Based MCP Extension (`entry_points`)
+
+* Register FastMCP instances from external projects
+* No modification of FinTools source code required
+* Built-in and external services can be managed uniformly when MCP is enabled
+
+## MCP Service Management (Optional)
+
+* Automatic port allocation
+* Unified connection record management
+* Service liveness detection (Ping)
+
+## LangChain / MultiServerMCPClient Integration
+
+* Retrieve all MCP service connections via `MCP_CONNECTIONS`
+* No manual URL configuration required
 
 ---
 
 # Installation
 
-finmcp is uv-managed and can be installed directly from GitHub:
+FinTools uses **uv** for dependency management and can be installed directly from GitHub:
 
 ```bash
-uv add https://github.com/hashhashgo/FinMCP.git
+uv add https://github.com/hashhashgo/FinTools.git
 ```
 
-After installation, finmcp can be used in any uv-managed project.
+After installation, FinTools can be used in any uv-managed project.
 
 ---
 
-# Starting MCP Services
+# (Optional) Starting MCP Services
 
-## Method 1: Start via CLI with Background Ping (Recommended)
+If you do not use MCP or LLMs, you may skip this section.
+
+## Method 1: Command-Line Startup (Recommended)
 
 ```bash
-uv run -m finmcp
+uv run -m fintools
 ```
 
 This command will:
 
-1. Start all FastMCP services registered via `entry_points`.
-2. Assign ports and write the connection information to the connection record file.
+1. Start all MCP services registered via `entry_points`
+2. Automatically allocate ports and write connection records
 3. Output:
 
-```
+```bash
 All MCP services are up and running.
 ```
 
-4. Perform background ping checks every 10 seconds, printing logs like:
+4. Ping all services every 10 seconds in the background and log status messages:
 
-```
-INFO:     127.0.0.1:39275 - "POST /mcp HTTP/1.1" 200 OK
+```bash
+INFO: 127.0.0.1:39275 - "POST /mcp HTTP/1.1" 200 OK
 Pinged service service_name successfully.
 ```
 
-This ensures all MCP services remain healthy and reachable.
-
 ---
 
-## Method 2: Start Services Programmatically
+## Method 2: Dynamic Startup in Code
 
-Set the following environment variable:
+Set the environment variable:
 
-```bash
+```toml
 START_SERVICES_INTERNAL=true
 ```
 
-Then call `start_all_services()` in your main program.
-Services will automatically start internally.
-
-**Note:**
-When this mode is enabled, calling `close_all_services()` will shut down all MCP services that were recorded. Ensure you release all resources properly.
-
----
-
-## Environment Variables
-
-```bash
-START_SERVICES_INTERNAL=false
-CONNECTION_RECORD_FILE="agent_tools_service_ports.json"
-FINMCP_HOST="0.0.0.0"
-```
-
-**Description**
-
-| Field                   | Type    | Description                                             |
-| ----------------------- | ------- | ------------------------------------------------------- |
-| START_SERVICES_INTERNAL | boolean | Whether to start services internally                    |
-| CONNECTION_RECORD_FILE  | str     | Path to store service connection records                |
-| FINMCP_HOST             | str     | Host binding of MCP services (e.g., 127.0.0.1, 0.0.0.0) |
-
-*Ports do not need to be manually assigned—finmcp automatically discovers available ports.*
-
----
-
-# Using finmcp in Your Program
-
-finmcp provides three primary APIs:
-
-* `start_all_services()`
-* `close_all_services()`
-* `MCP_CONNECTIONS` (service connection dictionary)
-
-## Example
+Then call in your program:
 
 ```python
-from finmcp import MCP_CONNECTIONS, start_all_services, close_all_services
+start_all_services()
+```
+
+Before exiting the program, call:
+
+```python
+close_all_services()
+```
+
+---
+
+## MCP-Related Environment Variables
+
+```toml
+START_SERVICES_INTERNAL=false
+CONNECTION_RECORD_FILE="agent_tools_service_ports.json"
+FINTOOLS_HOST="0.0.0.0"
+```
+
+| Variable                | Type    | Description                              |
+| ----------------------- | ------- | ---------------------------------------- |
+| START_SERVICES_INTERNAL | boolean | Whether to start MCP services internally |
+| CONNECTION_RECORD_FILE  | str     | Path to MCP connection record file       |
+| FINTOOLS_HOST           | str     | Host address to bind MCP services        |
+
+No manual port configuration is required; FinTools will automatically detect and assign available ports.
+
+---
+
+# Using FinTools in Your Program (MCP Example)
+
+```python
+from fintools import MCP_CONNECTIONS, start_all_services, close_all_services
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 async def main():
 
-    # Start all MCP services or load existing connections
     start_all_services()
 
     client = MultiServerMCPClient(connections=MCP_CONNECTIONS)
     tools = await client.get_tools()
 
-    # Example: invoke a tool
     result = await client.call_tool(
         "fin_history.history",
         {
@@ -137,24 +164,17 @@ async def main():
             "freq": "daily",
         }
     )
+
     print(result)
 
-    # Shut down services or clean up connections
     close_all_services()
 ```
 
 ---
 
-# Registering a New MCP Service
+# Registering New MCP Services (Plugin-Based)
 
-## Method 1: Register via Plugin (Recommended)
-
-finmcp loads third-party MCP services through `entry_points`.
-Any external library can provide an MCP service by following these steps:
-
-### 1. Define a FastMCP Instance
-
-`my_pkg/my_service.py`:
+## 1. Define a FastMCP Instance
 
 ```python
 from fastmcp import FastMCP
@@ -166,79 +186,57 @@ def echo(text: str):
     return text
 ```
 
-### 2. Register Your MCP Service in `pyproject.toml`
+## 2. Register via `entry_points` in Your Project
 
 ```toml
-[project.entry-points."finmcp.services"]
+[project.entry-points."fintools.services"]
 myservice = "my_pkg.my_service:mcp"
 ```
 
-### 3. Install Your Package
+## 3. Install Your Project
 
 ```bash
 uv pip install --editable .
-```
-
-If you update entry_points, rebuild:
-
-```bash
 uv build
 ```
 
-**Note:**
-If the package is not installed or built, uv will not detect your entry_points.
+After installation, FinTools will automatically discover and manage the MCP service.
 
-### 4. finmcp Will Manage Your MCP Automatically
+---
 
-Run:
+# Database and Caching Support
+
+FinTools supports caching downloaded data to a local database.
+
+Set the environment variable:
 
 ```bash
-uv run -m finmcp
+DB_PATH=history.db
 ```
 
-Your service will appear among managed services.
-
----
-
-## Method 2: Automatic Scanning (Deprecated)
-
-`finmcp.agent_tools` also contains an automatic scanning mechanism that discovers MCP services inside the package folder.
-
-For details, see: [README](finmcp/agent_tools/README.md)
-
-**Warning:**
-Do **not** import anything inside `finmcp.agent_tools` unless necessary.
-This feature conflicts with the primary finmcp service manager and should generally not be used.
-
----
-
-# Database Support
-
-This project supports caching all downloaded data by storing it in the database file specified by the `DB_PATH` environment variable.
-
-Please create the corresponding SQLite3 database file yourself, for example:
+Example of creating a SQLite database file:
 
 ```bash
-sqlite3 history.db
-> select * from sqlite_master;
-> .quit
+touch history.db
 ```
 
 ---
 
-# Summary
+# Usage Summary
 
-| Feature                    | Usage                                                      |
-| -------------------------- | ---------------------------------------------------------- |
-| Install finmcp from GitHub | `uv add https://github.com/hashhashgo/FinMCP.git`        |
-| Start all MCP services     | `uv run -m finmcp`                                       |
-| Start/load connections     | `start_all_services()`                                   |
-| Use with LangChain         | `MultiServerMCPClient(connections=MCP_CONNECTIONS)`      |
-| Stop all services          | `close_all_services()`                                   |
-| Register a new MCP service | Add entry under `project.entry-points."finmcp.services"` |
+| Functionality           | Command / API                                         |
+| ----------------------- | ----------------------------------------------------- |
+| Install FinTools        | `uv add https://github.com/hashhashgo/FinTools.git` |
+| Start MCP services      | `uv run -m fintools`                                |
+| Start services in code  | `start_all_services()`                              |
+| Get MCP connection info | `MCP_CONNECTIONS`                                   |
+| Close MCP services      | `close_all_services()`                              |
+| Register external MCP   | `entry_points`                                      |
 
 ---
 
 # License
 
 MIT
+
+---

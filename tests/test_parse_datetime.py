@@ -4,7 +4,7 @@ if __name__ == "__main__":
     sys.path.append(Path(__file__).parent.parent.as_posix())
 
 def test_datasource_parse_datetime():
-    from finmcp.data_sources import DataSource
+    from fintools.data_sources import DataSource
     from datetime import datetime, date, timedelta
     import time
 
@@ -57,7 +57,7 @@ def test_datasource_parse_datetime():
         assert str(e) == "Unsupported datetime input type: <class 'float'>"
 
 def test_utils_parse_datetime():
-    from finmcp.databases.utils import _parse_datetime
+    from fintools.databases.utils import _parse_datetime
     from datetime import datetime, date, timedelta
     import time
 

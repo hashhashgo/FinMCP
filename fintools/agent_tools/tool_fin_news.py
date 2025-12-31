@@ -13,8 +13,8 @@ from importlib.resources import files
 
 if not __package__:
     sys.path.append(str(Path(__file__).parent.parent.parent))
-from finmcp.data_sources.fin_news import NewsDataSource
-from finmcp.data_sources.fin_news import DATASOURCES
+from fintools.data_sources.fin_news import NewsDataSource
+from fintools.data_sources.fin_news import DATASOURCES
 
 mcp = FastMCP(
     name = "Financial News MCP Service",

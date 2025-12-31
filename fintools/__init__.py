@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 CONNECTION_RECORD_FILE = os.getenv("CONNECTION_RECORD_FILE", "agent_tools_service_ports.json")
 
-ENTRYPOINT_GROUP = "finmcp.services"
-MCP_HOST = os.environ.get("FINMCP_HOST", "127.0.0.1")
+ENTRYPOINT_GROUP = "fintools.services"
+MCP_HOST = os.environ.get("FINTOOLS_HOST", "127.0.0.1")
 MCP_PATH = "/mcp"
 
 

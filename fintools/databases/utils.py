@@ -5,7 +5,7 @@ from hashlib import sha1
 from typing import Dict, Optional, Any
 from datetime import datetime, date, timezone
 
-from finmcp.utils import _parse_datetime
+from fintools.utils import _parse_datetime
 
 def _python_type_to_sqlite_type(py_type: str) -> str:
     if py_type in ["int", "bool"]:

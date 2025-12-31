@@ -3,7 +3,7 @@ if __name__ == "__main__":
     from pathlib import Path
     sys.path.append(Path(__file__).parent.parent.as_posix())
 
-from finmcp.data_sources.fin_history import DATASOURCES, DataType, DataFrequency
+from fintools.data_sources.fin_history import DATASOURCES, DataType, DataFrequency
 from datetime import datetime, date, timedelta
 import dotenv
 dotenv.load_dotenv()

@@ -3,7 +3,7 @@ from typing import Optional, Union
 from enum import Enum
 from datetime import datetime, date, timedelta, timezone
 
-from finmcp.utils import _parse_datetime
+from fintools.utils import _parse_datetime
 
 class DataType(Enum):
     STOCK = 'stock'

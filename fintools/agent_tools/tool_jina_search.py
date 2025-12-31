@@ -3,7 +3,7 @@
 # Licensed under the MIT License
 
 
-# Alpha Vantage News Tool for FinMCP
+# Alpha Vantage News Tool for FinTools
 # This tool uses the Jina AI Search and Reader APIs to fetch and scrape web content.
 # You need to set the JINA_API_KEY environment variable with your API key.
 # You need to set the TODAY_DATE environment variable to filter articles published 

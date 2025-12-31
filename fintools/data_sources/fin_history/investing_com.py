@@ -1,5 +1,5 @@
 from .base import OHLCDataSource, DataType, DataFrequency
-from finmcp.databases.history_db import history_cache
+from fintools.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
 from typing import Optional, Callable, Union

@@ -14,8 +14,8 @@ def _new_init(self, *args, **kwargs):
 
 requests.sessions.Session.__init__ = _new_init
 
-from finmcp.databases.common_db import common_cache
-from finmcp.databases.history_db import history_cache
+from fintools.databases.common_db import common_cache
+from fintools.databases.history_db import history_cache
 
 import os
 import dotenv
@@ -44,10 +44,10 @@ def test_common_cache():
     assert not df.empty
 
 def test_select_all():
-    from finmcp.data_sources.fin_news import DATASOURCES
-    from finmcp.databases.common_db import DB_CONNECTIONS
-    assert "finmcp.data_sources.fin_news.eastmoney:EastMoneyNewsDataSource.news_details" in DB_CONNECTIONS
-    db = DB_CONNECTIONS['finmcp.data_sources.fin_news.eastmoney:EastMoneyNewsDataSource.news_details']
+    from fintools.data_sources.fin_news import DATASOURCES
+    from fintools.databases.common_db import DB_CONNECTIONS
+    assert "fintools.data_sources.fin_news.eastmoney:EastMoneyNewsDataSource.news_details" in DB_CONNECTIONS
+    db = DB_CONNECTIONS['fintools.data_sources.fin_news.eastmoney:EastMoneyNewsDataSource.news_details']
     all_keys = db.list_all_cached()
     assert len(all_keys) > 0
     all_data = db.select_by_primary_keys(all_keys)

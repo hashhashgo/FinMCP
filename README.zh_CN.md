@@ -2,127 +2,158 @@ Languages: [English](README.md) | 中文
 
 # 简介
 
-**finmcp** 是一个用于统一管理多个 MCP（Model Context Protocol）服务的轻量级框架。
-它适用于需要为 LLM（金融数据分析场景）提供可调用工具的项目，例如：
+**FinTools** 是一个金融数据与分析工具包（toolkit），用于统一封装和管理各类可复用的金融工具与数据接口。
 
-* 获取股票 / 指数 / 期货 / 外汇历史行情
-* 获取新闻与文本类信息
-* 进行网页搜索
-* 以及各种用户自定义的金融数据或分析服务
+它提供一组可直接调用的函数级工具，也可选地通过 MCP（Model Context Protocol）暴露给 LLM / Agent 系统使用。
 
-**finmcp** 自身包含一些内建的金融类 MCP 服务，同时支持用户通过 `entry_points` 扩展额外的 MCP 服务，使它们与内建服务一起被 finmcp 管理。
+FinTools 的目标是作为一个轻量、可组合、可复用的金融工具集合。
 
 ---
 
-## 特性
+## 提供的工具类型
 
-* **统一管理 MCP 服务**
-  将多个 FastMCP 实例集中管理、统一启动、关闭与连接信息记录。
-* **插件式服务扩展（entry_points）**
-  用户可以在自己的库中注册 FastMCP 实例，使其被 finmcp 管理（无需修改 finmcp 代码）。
-* **自动端口管理与连接记录**
-  所有服务启动后会将 URL 写入连接记录文件。
-* **服务可存活检测（Ping 模式）**
-  使用 `uv run -m finmcp` 启动时，会在后台自动每 10 秒向所有 MCP 服务发送 Ping 请求，并输出状态日志。
-* **LangChain / MultiServerMCPClient 无缝集成**
-  直接通过 `MCP_CONNECTIONS` 获取全部 MCP 服务 URL。
+FinTools 当前包含（并持续扩展）以下类型的工具：
+
+* 获取股票 / 指数 / 期货 / 外汇等历史行情数据
+* 获取新闻、公告及其他文本类金融信息
+* 网页搜索与外部信息检索
+* 用户自定义的金融数据或分析逻辑
+* 可选：适用于 LLM 的 MCP 接口封装
+
+---
+
+## MCP 支持说明（可选）
+
+FinTools 可以作为 MCP 服务的管理与启动工具，但 MCP 只是其中一种适配方式：
+
+* 可以完全不使用 MCP，直接在 Python 中调用工具函数
+* 也可以通过 MCP，将这些工具暴露给 LLM、LangChain 或多 Agent 系统
+
+FinTools 内置了一些金融相关的 MCP 服务，同时支持用户通过 `entry_points` 插件式扩展额外的 MCP 服务。
+
+---
+
+# 特性
+
+## 工具包定位
+
+* 所有功能均以工具（tool）为核心
+* 可独立使用、可组合、可复用
+* 不强制依赖任何 Agent、框架或运行时
+
+## 插件式 MCP 扩展（entry_points）
+
+* 支持在外部项目中注册 FastMCP 实例
+* 无需修改 FinTools 源码
+* 内建服务与外部服务可统一管理（在启用 MCP 时）
+
+## MCP 服务管理能力（可选）
+
+* 自动端口分配
+* 服务连接信息统一记录
+* 服务存活检测（Ping）
+
+## LangChain / MultiServerMCPClient 集成
+
+* 通过 `MCP_CONNECTIONS` 获取全部 MCP 服务连接
+* 无需手动配置 URL
 
 ---
 
 # 安装
 
-finmcp 使用 uv 管理，可直接从 GitHub 安装：
+FinTools 使用 uv 管理依赖，可直接从 GitHub 安装：
 
 ```bash
-uv add https://github.com/hashhashgo/FinMCP.git
+uv add https://github.com/hashhashgo/FinTools.git
 ```
 
-安装后即可在任何 uv 项目中使用 finmcp 管理 MCP 服务。
+安装后即可在任意 uv 项目中使用 FinTools。
 
 ---
 
-# 启动 MCP 服务
+# （可选）启动 MCP 服务
 
-## 方式 1：使用命令自动启动并后台 Ping（推荐）
+如果不使用 MCP / LLM，可跳过本节。
+
+## 方式 1：命令行启动（推荐）
 
 ```bash
-uv run -m finmcp
+uv run -m fintools
 ```
 
 该命令会：
 
-1. 启动所有通过 entry_points 注册的 FastMCP 服务
-2. 分配端口并写入连接记录文件
+1. 启动所有通过 `entry_points` 注册的 MCP 服务
+2. 自动分配端口并写入连接记录文件
 3. 输出：
 
-```
+```bash
 All MCP services are up and running.
 ```
 
-4. 后台每 10 秒 Ping 所有服务，并输出类似日志：
+4. 后台每 10 秒 Ping 所有服务，并输出状态日志：
 
-```
-INFO:     127.0.0.1:39275 - "POST /mcp HTTP/1.1" 200 OK
+```bash
+INFO: 127.0.0.1:39275 - "POST /mcp HTTP/1.1" 200 OK
 Pinged service service_name successfully.
 ```
 
-用于确保 MCP 服务在线。
+---
 
-## 方式2：在程序中动态启动
+## 方式 2：在主程序中动态启动
 
-需要在环境变量中设置
+设置环境变量：
 
-```bash
+```toml
 START_SERVICES_INTERNAL=true
 ```
 
-然后当主程序 `start_all_services()`时自动启动所有MCP服务。
+在代码中调用：
 
-**注意：**使用此方式在 `close_all_services()`时会关闭所有记录的MCP服务，注意释放连接。
-
-## 环境变量
-
-```bash
-START_SERVICES_INTERNAL=false
-CONNECTION_RECORD_FILE="agent_tools_service_ports.json"
-FINMCP_HOST="0.0.0.0"
+```python
+start_all_services()
 ```
 
-**字段说明：**
+程序结束前调用：
 
-| 字段                    | 类型    | 说明                                   |
-| ----------------------- | ------- | -------------------------------------- |
-| START_SERVICES_INTERNAL | boolean | 是否在程序内部启动服务                 |
-| CONNECTION_RECORD_FILE  | str     | 连接信息保存的位置                     |
-| FINMCP_HOST             | str     | 服务器绑定地址，如127.0.0.1、0.0.0.0等 |
-
-*不需要手动指定端口，程序会自动检测可用端口并绑定*
+```python
+close_all_services()
+```
 
 ---
 
-# 在主程序中使用 finmcp
+## MCP 相关环境变量
 
-finmcp 提供三个核心 API：
+```toml
+START_SERVICES_INTERNAL=false
+CONNECTION_RECORD_FILE="agent_tools_service_ports.json"
+FINTOOLS_HOST="0.0.0.0"
+```
 
-* `start_all_services()`
-* `close_all_services()`
-* `MCP_CONNECTIONS`（连接信息字典）
+| 变量名                  | 类型    | 说明                        |
+| ----------------------- | ------- | --------------------------- |
+| START_SERVICES_INTERNAL | boolean | 是否在程序内部启动 MCP 服务 |
+| CONNECTION_RECORD_FILE  | str     | MCP 连接信息记录文件路径    |
+| FINTOOLS_HOST           | str     | MCP 服务绑定地址            |
 
-## 示例
+不需要手动指定端口，FinTools 会自动检测并分配可用端口。
+
+---
+
+# 在主程序中使用（以 MCP 为例）
 
 ```python
-from finmcp import MCP_CONNECTIONS, start_all_services, close_all_services
+from fintools import MCP_CONNECTIONS, start_all_services, close_all_services
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 async def main():
 
-    # 启动所有 MCP 服务（或加载连接记录）
     start_all_services()
 
     client = MultiServerMCPClient(connections=MCP_CONNECTIONS)
     tools = await client.get_tools()
 
-    # 示例：使用某个工具
     result = await client.call_tool(
         "fin_history.history",
         {
@@ -131,24 +162,17 @@ async def main():
             "freq": "daily",
         }
     )
+
     print(result)
 
-    # 程序结束前关闭服务或清除连接
     close_all_services()
 ```
 
 ---
 
-# 注册新的 MCP 服务
+# 注册新的 MCP 服务（插件方式）
 
-## 方式1：注册插件方式
-
-finmcp 通过 `entry_points` 接收外部 MCP 服务。
-任何第三方库只需提供：
-
-### 1. 定义一个 FastMCP 实例
-
-例如 `my_pkg/my_service.py`：
+## 1. 定义 FastMCP 实例
 
 ```python
 from fastmcp import FastMCP
@@ -160,72 +184,57 @@ def echo(text: str):
     return text
 ```
 
-### 2. 在您的项目的 `pyproject.toml` 注册到 finmcp
+## 2. 在项目中注册 entry_points
 
 ```toml
-[project.entry-points."finmcp.services"]
+[project.entry-points."fintools.services"]
 myservice = "my_pkg.my_service:mcp"
 ```
 
-### 3. 安装您的库
+## 3. 安装项目
 
 ```bash
 uv pip install --editable .
-```
-
-如果对pyproject.toml的entry points有更新，需要重新编译：
-
-```python
 uv build
 ```
 
-**注意：**如果不安装和编译，您注册的记录 `uv`不会自动添加到项目的entry points中。
-
-### 4. finmcp 会自动管理您的 MCP
-
-运行：
-
-```bash
-uv run -m finmcp
-```
-
-## 方式2：自动扫描（已弃用）
-
-`finmcp.agent_tools` 本身也是一个包管理器，它可以自动扫描和管理文件夹下的所有服务。
-
-详细介绍请查看[README](./finmcp/agent_tools/README.zh_CN.md)。
-
-**注意：**如无特殊需求，请不要 `import finmcp.agent_tools` 下的任何模块或者使用这个功能。此功能和 `finmcp` 模块本身的功能冲突。
+完成后，FinTools 会自动加载并管理该 MCP 服务。
 
 ---
 
-# 数据库支持
+# 数据库与缓存支持
 
-本项目支持缓存所有下载的数据，记录到  `DB_PATH` 环境变量指向的数据库文件中。
+FinTools 支持将下载的数据缓存至本地数据库。
 
-请自行创建对应的sqlite3的数据库文件，比如：
+设置环境变量：
 
 ```bash
-sqlite3 history.db
-> select * from sqlite_master;
-> .quit
+DB_PATH=history.db
+```
+
+示例创建 SQLite 数据库：
+
+```bash
+touch history.db
 ```
 
 ---
 
-# 使用说明总结
+# 使用说明速览
 
-| 功能                     | 操作                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| 从 GitHub 安装 finmcp    | `uv add https://github.com/hashhashgo/FinMCP.git`                             |
-| 启动所有 MCP 并后台 Ping | `uv run -m finmcp`                                                            |
-| 主程序中启动/读取连接    | `start_all_services()`                                                        |
-| 在 LangChain 中使用      | `client = MultiServerMCPClient(connections=MCP_CONNECTIONS)`                  |
-| 关闭所有 MCP 服务        | `close_all_services()`                                                        |
-| 注册新 MCP               | 在您的库的 `pyproject.toml` 写入 `[project.entry-points."finmcp.services"]` |
+| 功能                  | 操作                                                  |
+| --------------------- | ----------------------------------------------------- |
+| 安装 FinTools         | `uv add https://github.com/hashhashgo/FinTools.git` |
+| 启动 MCP 服务（可选） | `uv run -m fintools`                                |
+| 程序中启动服务        | `start_all_services()`                              |
+| 获取 MCP 连接信息     | `MCP_CONNECTIONS`                                   |
+| 关闭 MCP 服务         | `close_all_services()`                              |
+| 注册外部 MCP 工具     | `entry_points`                                      |
 
 ---
 
 # License
 
 MIT
+
+---

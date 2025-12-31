@@ -13,8 +13,8 @@ from importlib.resources import files
 
 if not __package__:
     sys.path.append(str(Path(__file__).parent.parent.parent))
-from finmcp.data_sources.fin_history import OHLCDataSource
-from finmcp.data_sources.fin_history import DataType, DataFrequency, STANDARD_COLUMN_NAMES, DATASOURCES
+from fintools.data_sources.fin_history import OHLCDataSource
+from fintools.data_sources.fin_history import DataType, DataFrequency, STANDARD_COLUMN_NAMES, DATASOURCES
 
 mcp = FastMCP(
     name = "Financial Data History MCP Service",
@@ -122,7 +122,7 @@ Returns: List of dictionaries, each containing:
 )
 def list_indices() -> List[Dict[str, str]]:
     logger.info("Listing known financial indices")
-    df = pd.read_csv(files("finmcp").joinpath("data/known_indices.csv").open(encoding="utf-8"))
+    df = pd.read_csv(files("fintools").joinpath("data/known_indices.csv").open(encoding="utf-8"))
     df = df[['name', 'type'] + list(DATASOURCES.keys())]
     ret = []
     for _, row in df.iterrows():

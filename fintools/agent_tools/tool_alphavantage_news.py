@@ -3,7 +3,7 @@
 # Licensed under the MIT License
 
 
-# Alpha Vantage News Tool for FinMCP
+# Alpha Vantage News Tool for FinTools
 # This tool uses the Alpha Vantage NEWS_SENTIMENT API to fetch market news articles.
 # You need to set the ALPHAADVANTAGE_API_KEY environment variable with your API key.
 # You need to set the TODAY_DATE environment variable to filter articles published 
