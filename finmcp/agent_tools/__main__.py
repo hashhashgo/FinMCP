@@ -34,8 +34,6 @@ def init_connection(url, id = 1):
     }
     resp = requests.post(url, json=init_payload, headers=headers, timeout=5)
     resp.raise_for_status()
-    # logger.info(resp.headers)
-    # logger.info(resp.text)
     headers['mcp-session-id'] = resp.headers.get('mcp-session-id', '')
     requests.post(url, json={
         "jsonrpc": "2.0",

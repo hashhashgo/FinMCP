@@ -64,7 +64,7 @@ def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, t
                         s.bind(("127.0.0.1", current_port))
                         break
                     except OSError:
-                        logger.info(f"Port {current_port} is in use, trying next port...")
+                        logger.debug(f"Port {current_port} is in use, trying next port...")
                         current_port += 1
             MCP_PROCESSES[mcp_service] = Process(target=_run_service, args=(mcp_service, current_port))
             MCP_PROCESSES[mcp_service].daemon = True
