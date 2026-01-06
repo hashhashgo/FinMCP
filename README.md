@@ -60,7 +60,7 @@ FinTools supports caching downloaded data into a local database (e.g., SQLite).
 
 Set the environment variable:
 
-```toml
+```bash
 FINTOOLS_DB=history.db
 ```
 

@@ -60,7 +60,7 @@ FinTools 支持将下载的数据缓存至本地数据库（如 SQLite）。
 
 设置环境变量：
 
-```toml
+```bash
 FINTOOLS_DB=history.db
 ```
 
