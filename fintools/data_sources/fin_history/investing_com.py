@@ -9,9 +9,7 @@ from datetime import datetime, date
 from lxml import etree
 import requests
 import json
-import brotli
-from seleniumwire import webdriver
-from seleniumwire.request import Request, Response
+from playwright.sync_api import sync_playwright, Response
 import pandas as pd
 import os
 import logging
@@ -51,14 +49,14 @@ class InvestingComDataSource(OHLCDataSource):
             'Priority': 'u=0, i',
             'Te': 'trailers'
         }
-        self.driver = webdriver.Firefox()
-        self.driver.minimize_window()
+        self._playwright = sync_playwright().start()
+        self.browser = self._playwright.firefox.launch(headless=True)
         self.lock = Lock()
     
     def __del__(self) -> None:
-        self.driver.quit()
+        self.browser.close()
+        self._playwright.stop()
     
-
     @history_cache(
         table_basename="investing_com",
         db_path=os.getenv("FINTOOLS_DB", ""),
@@ -95,39 +93,36 @@ class InvestingComDataSource(OHLCDataSource):
     def unsubscribe(self, symbol: str, interval: str) -> None:
         raise NotImplementedError("Investing.com does not support real-time data unsubscription")
 
+    def _route_handler(self, route):
+        req = route.request
 
-    def driver_get(self, url: str, use_cache: bool = True) -> Response:
-        res = None
-        if use_cache:
-            for request in reversed(self.driver.requests):
-                if request.url == url:
-                    res = request.response
-                    break
-        if res is None:
-            with self.lock:
-                self.driver.get(url)
-        for request in reversed(self.driver.requests):
-            if request.url == url:
-                res = request.response
-                break
-        if res is None:
-            raise ValueError("Could not find the request for the specified URL.")
-        if res.headers.get('Content-Encoding') == 'br':
-            res.body = brotli.decompress(res.body)
-        return res
+        # 只允许主文档（index.html）
+        if req.resource_type == "document":
+            route.continue_()
+        else:
+            route.abort()
+
+    def driver_get(self, url: str) -> bytes:
+        with self.lock:
+            page = self.browser.new_page()
+            page.route("**/*", self._route_handler)
+            res = page.goto(url, wait_until="networkidle")
+            if res is None:
+                raise ValueError(f"Failed to load URL: {url}")
+            body = res.body()
+            page.close()
+            return body
 
     def grab_investing_com_html(self, name: str, type: str) -> str:
         url = f"https://www.investing.com/{type}/{name}"
         response = requests.get(url, headers=self.headers)
         if response.status_code == 403:
             logger.warning("Access forbidden. You may need to implement human verification to obtain cookies.")
-            self.driver.maximize_window()
             res = self.driver_get(url)
-            self.driver.minimize_window()
-            assert res.status_code == 200, "Failed to retrieve page after human verification."
-            return res.body.decode('utf-8')
-        response.raise_for_status()
-        return response.text
+            return res.decode('utf-8')
+        else:
+            response.raise_for_status()
+            return response.text
 
     def get_investing_com_metadata(self, html: str) -> dict:
         tree = etree.HTML(html)
@@ -157,7 +152,7 @@ class InvestingComDataSource(OHLCDataSource):
         else: instrument_id = str(instrument_id)
         url = f"https://api.investing.com/api/financialdata/{instrument_id}/historical/chart/?interval={freq}&pointscount=160"
         res = self.driver_get(url)
-        data = json.loads(res.body.decode('utf-8'))
+        data = json.loads(res.decode('utf-8'))
         data = data['data']
         df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'null'])
         df['date'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
