@@ -46,7 +46,7 @@ class EastMoneyReportDataSource(ReportDataSource):
 
     @history_cache(
         table_basename="eastmoney_report",
-        db_path=os.getenv("DB_PATH", ""),
+        db_path=os.getenv("FINTOOLS_DB", ""),
         key_fields=("symbol", ),
         common_fields=(),
         except_fields=()
@@ -98,7 +98,7 @@ class EastMoneyReportDataSource(ReportDataSource):
 
     @common_cache(
         table_basename="eastmoney_report_details",
-        db_path=os.getenv("DB_PATH", ""),
+        db_path=os.getenv("FINTOOLS_DB", ""),
         key_fields=("code", ),
         common_fields=(),
         except_fields=()

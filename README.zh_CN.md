@@ -209,7 +209,7 @@ FinTools 支持将下载的数据缓存至本地数据库。
 设置环境变量：
 
 ```bash
-DB_PATH=history.db
+FINTOOLS_DB=history.db
 ```
 
 示例创建 SQLite 数据库：

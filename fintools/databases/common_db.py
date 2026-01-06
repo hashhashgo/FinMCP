@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class CommonDB(BaseDB):
-    def __init__(self, table_basename: str, db_path: str = os.getenv("DB_PATH", "history.db")):
+    def __init__(self, table_basename: str, db_path: str = os.getenv("FINTOOLS_DB", "history.db")):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename

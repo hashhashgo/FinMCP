@@ -35,7 +35,7 @@ class NanHuaDataSource(OHLCDataSource):
 
     @history_cache(
         table_basename=name,
-        db_path=os.getenv("DB_PATH", ""),
+        db_path=os.getenv("FINTOOLS_DB", ""),
         key_fields=("symbol",),
         common_fields= ("freq", ),
         except_fields=("type", ),

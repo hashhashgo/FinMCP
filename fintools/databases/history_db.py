@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 from .utils import *
 
 class IntervalDB(BaseDB):
-    def __init__(self, table_basename: str, db_path: str = os.getenv("DB_PATH", "history.db")):
+    def __init__(self, table_basename: str, db_path: str = os.getenv("FINTOOLS_DB", "history.db")):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename + "_intervals"
@@ -222,7 +222,7 @@ class IntervalDB(BaseDB):
             return True
 
 class HistoryDB(BaseDB):
-    def __init__(self, table_basename: str, db_path: str = os.getenv("DB_PATH", "history.db"), missing_threshold: int = 1):
+    def __init__(self, table_basename: str, db_path: str = os.getenv("FINTOOLS_DB", "history.db"), missing_threshold: int = 1):
         assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename

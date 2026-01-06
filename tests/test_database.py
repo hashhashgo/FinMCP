@@ -27,7 +27,7 @@ pro = tushare.pro_api(os.getenv("TUSHARE_API_KEY", ""))
 
 @common_cache(
     table_basename = "index_basic",
-    db_path = os.getenv("DB_PATH", "")
+    db_path = os.getenv("FINTOOLS_DB", "")
 )
 def index_basic() -> pd.DataFrame:
     """
