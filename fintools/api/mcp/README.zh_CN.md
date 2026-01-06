@@ -1,32 +1,78 @@
 Languages: [English](README.md) | 中文
 
-***直接使用此库的用法已经弃用了。请直接import finmcp或者python -m fintools。并采用在entry_points中注册的方法。具体用法请转到[README](../../README.zh_CN.md)***
+***本模块不再通过扫描源码目录自动发现服务，所有 MCP 服务必须通过 entry_points 显式注册。***
+
+---
 
 # 介绍
 
 一个基于 **FastMCP** 的动态、自动发现式 MCP 服务管理器。
-它会自动加载 `fintools.api.mcp` 包中定义的所有 `FastMCP` 服务实例，并提供：
 
-* 自动启动 MCP Server（多进程 + HTTP）
-* 连接到已存在的远程 MCP 服务
-* 统一管理所有服务与连接
-* 定时健康检查（周期性 ping）
+该模块负责统一管理和运行所有注册到 `entry-points` 的 `FastMCP` 实例，例如：
+
+```toml
+[project.entry-points."fintools.mcp_services"]
+tool_fin_history = "fintools.api.mcp.tool_fin_history:mcp"
+```
+
+并提供：
+
+* MCP 服务的自动加载与注册
+* 多进程 + HTTP 的 MCP Server 启动与管理
+* 已存在远程 MCP 服务的连接能力
+* MCP 服务连接的统一维护
+* 周期性的服务健康检查（Ping）
+
+---
 
 # 功能特性
 
-| 功能项                | 描述                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| **自动发现**           | 扫描 `agent_tools/` 下所有 `.py` 文件，自动加载其中暴露的 `FastMCP` 实例。                              |
-| **统一注册管理**         | 所有发现的服务存入 `MCP_SERVICES: Dict[str, FastMCP]`，自动创建并存储连接于 `Dict[str, Connection]`。     |
-| **多进程 Server 管理器** | `start_all_services()` 会为每个服务启动独立的 HTTP MCP 服务。<br>使用 `close_all_services()` 关闭全部服务。 |
-| **支持外部服务**         | 可以连接外部已运行的 MCP 服务，而不是自动启动它们。                                                         |
-| **环境变量控制**         | 使用 `.env` 决定是否启动或仅连接服务。                                                              |
-| **自动启动器**          | `python -m fintools.api.mcp` 可一次性启动所有服务（推荐）。                                  |
-| **健康检测器**          | 周期性 ping 检查所有服务是否存活。                                                                 |
+| 功能项               | 描述                                                            |
+| ----------------- | ------------------------------------------------------------- |
+| **插件式发现**         | 通过 `project.entry-points."fintools.mcp_services"` 加载所有 MCP 服务 |
+| **统一注册管理**        | 所有服务统一存入 `MCP_SERVICES: Dict[str, FastMCP]`                   |
+| **连接集中管理**        | 所有服务连接统一维护在 `MCP_CONNECTIONS: Dict[str, Connection]`          |
+| **多进程 Server 管理** | `start_all_services()` 为每个 MCP 服务启动独立 HTTP Server             |
+| **外部服务支持**        | 支持仅连接已存在的 MCP 服务，而不创建新进程                                      |
+| **环境变量控制**        | 通过 `.env` 控制“启动 / 仅连接”行为                                      |
+| **一键启动器**         | `python -m fintools.api.mcp` 启动全部已注册服务（推荐）                    |
+| **健康检测**          | 周期性 ping 检测所有 MCP 服务存活状态                                      |
+
+---
 
 # 使用方法
 
-导入模块：
+## MCP 服务注册
+
+所有 MCP 服务 必须 通过 entry_points 注册。
+
+**示例：定义 MCP 服务**
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("my_custom_service")
+
+@mcp.tool
+def echo(text: str) -> str:
+    return text
+```
+
+**在项目中注册 entry_points**
+```toml
+[project.entry-points."fintools.mcp_services"]
+my_service = "my_pkg.my_service:mcp"
+```
+
+安装该项目后，该 MCP 服务将被自动加载并纳入统一管理。
+
+* 无需修改 fintools 源码
+* 支持多项目、多团队独立扩展
+* 不再支持隐式扫描源码目录
+
+---
+
+## 导入模块
 
 ```python
 from fintools.api.mcp import (
@@ -37,6 +83,8 @@ from fintools.api.mcp import (
     close_all_services,
 )
 ```
+
+---
 
 ## 在应用中内部启动服务
 
@@ -58,6 +106,8 @@ start_all_services()
 start_all_services(start_anyway=True)
 ```
 
+---
+
 ## 外部启动服务（推荐）
 
 ```bash
@@ -66,6 +116,7 @@ uv run -m fintools.api.mcp
 
 这将执行包内的 `__main__`，并将：
 
+* 加载所有通过 entry_points 注册的 MCP 服务
 * 为每个 MCP 服务启动独立 HTTP Server（端口自动递增）
 * 周期性 ping 检查服务状态
 
@@ -84,11 +135,15 @@ ANOTHER_SERVICE_PORT=8001
 start_all_services(create_new=False)
 ```
 
-## 使用 FastMCP CLI 启动服务
+---
+
+## 使用 FastMCP CLI 启动单个服务（可选）
 
 ```bash
 fastmcp run my_service.py --transport http --port [port]
 ```
+
+---
 
 ## 关闭所有服务
 
@@ -102,6 +157,8 @@ close_all_services()
 
 使用 `Ctrl + C` 或向进程发送 `SIGINT` / `SIGTERM`，模块会自动关闭所有服务。
 
+---
+
 ## 环境变量说明
 
 | 变量                            | 行为              |
@@ -110,25 +167,7 @@ close_all_services()
 | `START_SERVICES=False`        | 不启动本地服务，仅连接远程服务 |
 | `[PACKAGE_NAME]_SERVICE_PORT` | 指定外部服务的端口       |
 
-# 自动发现行为
-
-任何放在 `fintools/agent_tools/` 下且 **在顶层定义并暴露 `FastMCP` 实例** 的 `.py` 文件都会自动被加载。
-
-示例：
-
-```python
-from fastmcp import FastMCP
-
-mcp = FastMCP("my_custom_service")
-
-@mcp.tool(...)
-def some_tool(...):
-    ...
-```
-
-> ⚠️ **不要把 FastMCP 实例隐藏在函数或类内部**
-> 自动扫描只能识别顶层暴露的 FastMCP 对象。
-
+---
 
 # 与 LangChain 的集成示例
 
@@ -143,28 +182,9 @@ client = MultiServerMCPClient(MCP_CONNECTIONS)
 tools = await client.get_tools()
 ```
 
-然后即可将工具交由 LangChain Agent 使用。
+随后即可将 `tools` 注入 LangChain / LangGraph / Agent 系统使用。
 
-
-# 创建一个新的 MCP 服务
-
-直接遵循标准的 [FastMCP](https://gofastmcp.com/getting-started/quickstart) 语法即可，无需额外代码：
-
-```python
-from fastmcp import FastMCP
-
-mcp = FastMCP("My MCP Server")
-
-@mcp.tool
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
-```
-
-保存文件后：
-
-* 它会被自动发现
-* 启动时自动分配端口
-* 可立即被 LangChain 使用
+---
 
 # 调试 MCP 服务
 
@@ -182,3 +202,11 @@ npx @modelcontextprotocol/inspector
 | Connection Type | Via Proxy                   |
 
 然后在`Tools`页面就可以看见服务的所有工具了。
+
+---
+
+# License
+
+MIT
+
+---

@@ -1,35 +1,81 @@
 Languages: English | [中文](README.zh_CN.md)
 
-***Directly using this package is deprecated. Please import fintools or start fintools as a module. And register the mcp instance in entry points.
-For more information, please read [README](../../README.md)***
+***This module no longer discovers services by scanning source directories.  
+All MCP services must be explicitly registered via entry_points.***
+
+---
 
 # Introduction
-A dynamic, auto-discovering MCP service manager built on FastMCP.
-It automatically loads all FastMCP service instances defined under the fintools.api.mcp package and provides:
 
-* Automatic MCP server startup (multi-process, HTTP)
+A dynamic, plugin-based MCP service manager built on **FastMCP**.
 
-* Connection to existing remote MCP services
+This module is responsible for uniformly managing and running all `FastMCP` instances
+registered via `entry_points`, for example:
 
-* Centralized registry of services and active connections
+```toml
+[project.entry-points."fintools.mcp_services"]
+tool_fin_history = "fintools.api.mcp.tool_fin_history:mcp"
+```
 
-* Health monitoring (periodic ping checks)
+It provides:
+
+- Automatic loading and registration of MCP services
+- Multi-process + HTTP MCP server startup and lifecycle management
+- Ability to connect to already running remote MCP services
+- Unified management of all MCP service connections
+- Periodic health checks (Ping)
+
+---
 
 # Features
 
-| Feature                          | Description                                                  |
-| -------------------------------- | ------------------------------------------------------------ |
-| **Auto-discovery**               | Scans all `.py` files in `agent_tools/`, loads exposed `FastMCP` instances automatically. |
-| **Unified registry**             | All discovered services are stored in `MCP_SERVICES: Dict[str, FastMCP]`.<br />Automatically create connections to services, storing in `Dict[str, Connection]` |
-| **Multi-process server manager** | `start_all_services()` launches each service as an independent HTTP MCP server.<br />`close_all_services()` for closing all services. |
-| **External server support**      | Can connect to existing running servers instead of starting new ones. |
-| **Environment-driven config**    | `.env` controls whether to start or merely connect to services. |
-| **Auto-launcher**                | `python -m fintools.api.mcp` starts all services externally (recommended). |
-| **Health checker**               | Periodic ping monitoring for all active MCP servers.         |
+| Feature | Description |
+|------|------------|
+| **Plugin-based discovery** | Load MCP services via `project.entry-points."fintools.mcp_services"` |
+| **Unified registration** | All services are stored in `MCP_SERVICES: Dict[str, FastMCP]` |
+| **Centralized connection management** | All connections are maintained in `MCP_CONNECTIONS: Dict[str, Connection]` |
+| **Multi-process server manager** | `start_all_services()` launches an independent HTTP server per MCP service |
+| **External service support** | Connect to existing MCP services without spawning new processes |
+| **Environment variable control** | Control startup vs. connection-only behavior via `.env` |
+| **One-command launcher** | `python -m fintools.api.mcp` starts all registered services (recommended) |
+| **Health monitoring** | Periodic ping checks to ensure service liveness |
+
+---
 
 # Usage
 
-Import the built-in control module:
+## MCP Service Registration
+
+All MCP services **must** be registered via `entry_points`.
+
+### Example: Define an MCP service
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("my_custom_service")
+
+@mcp.tool
+def echo(text: str) -> str:
+    return text
+```
+
+### Register via entry_points
+
+```toml
+[project.entry-points."fintools.mcp_services"]
+my_service = "my_pkg.my_service:mcp"
+```
+
+After installing the project, the MCP service will be automatically loaded and managed.
+
+- No modification to `fintools` source code required
+- Supports independent extension across multiple projects or teams
+- Implicit source-directory scanning is no longer supported
+
+---
+
+## Importing the Module
 
 ```python
 from fintools.api.mcp import (
@@ -41,25 +87,29 @@ from fintools.api.mcp import (
 )
 ```
 
-## Starting Services Internally (From Your App)
+---
 
-Configure in `.env`:
+## Starting Services Internally
+
+Configure `.env`:
 
 ```bash
 START_SERVICES=True
 ```
 
-Then start all services in your app:
+Then start services in code:
 
 ```python
 start_all_services()
 ```
 
-Or force starting new services with :
+Or force startup regardless of environment configuration:
 
 ```python
 start_all_services(start_anyway=True)
 ```
+
+---
 
 ## Starting Services Externally (Recommended)
 
@@ -67,119 +117,100 @@ start_all_services(start_anyway=True)
 uv run -m fintools.api.mcp
 ```
 
-This executes the package’s `__main__`, which:
+This executes the module's `__main__` and will:
 
-- Spawns each MCP service as an HTTP server on increasing ports
-- Periodically pings all servers to verify health
+- Load all MCP services registered via entry_points
+- Start an independent HTTP server for each MCP service (ports auto-assigned)
+- Periodically ping services to monitor health
 
-Then in `.env`:
+Then configure `.env`:
 
 ```bash
-START_SERVICES=false
+START_SERVICES=False
 MY_SERVICE_PORT=8000
 ANOTHER_SERVICE_PORT=8001
-......
+...
 ```
 
-In your app:
+And connect without creating new processes:
 
 ```python
 start_all_services(create_new=False)
 ```
 
-## Using FastMCP CLI
+---
+
+## Starting a Single Service via FastMCP CLI (Optional)
 
 ```bash
 fastmcp run my_service.py --transport http --port [port]
 ```
 
-## Close All services
+---
 
-**If you start services internally:**
+## Shutting Down Services
+
+**If services were started internally:**
 
 ```python
 close_all_services()
 ```
 
-**If you start service externally:**
+**If services were started externally:**
 
-Just send `SIGINT` or `SIGTERM` to the python runtime, the module will automatically terminate them.
+Use `Ctrl + C` or send `SIGINT` / `SIGTERM` to the process.
+All services will be shut down gracefully.
+
+---
 
 ## Environment Variables
 
-| Variable                      | Behavior                                              |
-| ----------------------------- | ----------------------------------------------------- |
-| `START_SERVICES=True`         | Launch MCP servers inside the current app             |
-| `START_SERVICES=False`        | Do not launch local servers; connect to existing ones |
-| `[PACKAGE_NAME]_SERVICE_PORT` | Manual port mapping when using external services      |
+| Variable | Behavior |
+|-------|---------|
+| `START_SERVICES=True` | Start MCP services in the current application |
+| `START_SERVICES=False` | Do not start local services; only connect to remote ones |
+| `[PACKAGE_NAME]_SERVICE_PORT` | Specify the port of an external MCP service |
 
-# Auto-Discovery Behavior
+---
 
-Any `.py` module inside `fintools/agent_tools/` that **exposes a `FastMCP` instance at top-level** will be automatically registered.
+# LangChain Integration Example
 
-Example:
-
-```python
-from fastmcp import FastMCP
-
-mcp = FastMCP("my_custom_service")
-
-@mcp.tool(...)
-def some_tool(...):
-    ...
-```
-
-> ⚠️ **Do not hide the instance behind functions or classes.**
->  The module loader detects **only top-level exported `FastMCP` objects**.
-
-# Example Integration With LangChain
-
-Once services are started or connected, simply load their tools normally:
+Once services are started or connected, retrieving tools is straightforward:
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from fintools.api.mcp import MCP_CONNECTIONS
 
 client = MultiServerMCPClient(MCP_CONNECTIONS)
-
 tools = await client.get_tools()
 ```
 
-Now the tools can be passed into any LangChain agent.
+The retrieved tools can then be injected into LangChain / LangGraph / Agent systems.
 
-# Creating a New MCP Service
+---
 
-Just follow standard [FastMCP](https://gofastmcp.com/getting-started/quickstart) syntax.
+# Debugging MCP Services
 
-```python
-from fastmcp import FastMCP
+Start the MCP Inspector:
 
-mcp = FastMCP("My MCP Server")
-
-@mcp.tool
-def greet(name: str) -> str:
-    return f"Hello, {name}!"
-```
-
-After saving the file:
-
-- It is automatically discovered
-- It will be assigned a port when launched
-- It becomes available to LangChain
-
-# Debug a MCP Service
-
-Start a MCP inspector:
 ```bash
 npx @modelcontextprotocol/inspector
 ```
 
-Connect with:
+Use the following connection settings:
 
-| Settings        | Values                      |
-| --------------- | --------------------------- |
-| Transport Type  | Streamable HTTP             |
-| URL             | http://127.0.0.1:[port]/mcp |
-| Connection Type | Via Proxy                   |
+| Setting | Value |
+|------|------|
+| Transport Type | Streamable HTTP |
+| URL | http://127.0.0.1:[port]/mcp |
+| Connection Type | Via Proxy |
 
-Then you can view your tools in `Tools` tab.
+All tools exposed by the service will be visible on the **Tools** page.
+
+---
+
+# License
+
+MIT
+
+---
