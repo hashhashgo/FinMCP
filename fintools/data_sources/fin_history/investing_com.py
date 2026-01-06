@@ -1,4 +1,4 @@
-from .base import OHLCDataSource, DataType, DataFrequency
+from .base import OHLCDataSource, UnderlyingType, DataFrequency
 from fintools.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -64,22 +64,22 @@ class InvestingComDataSource(OHLCDataSource):
         common_fields= ("type",),
         except_fields=(),
     )
-    def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
+    def history(self, symbol: str, type: UnderlyingType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         ic_freq = self._map_frequency(freq)
-        if type == DataType.INDEX:
+        if type == UnderlyingType.INDEX:
             data = self.load_data(name=symbol, type="indices", freq=ic_freq)
-        elif type == DataType.STOCK:
+        elif type == UnderlyingType.STOCK:
             data = self.load_data(name=symbol, type="equities", freq=ic_freq)
-        elif type == DataType.COMMODITY:
+        elif type == UnderlyingType.COMMODITY:
             data = self.load_data(name=symbol, type="commodities", freq=ic_freq)
-        elif type == DataType.BOND:
+        elif type == UnderlyingType.BOND:
             data = self.load_data(name=symbol, type="rates-bonds", freq=ic_freq)
-        elif type == DataType.FOREX:
+        elif type == UnderlyingType.FOREX:
             data = self.load_data(name=symbol, type="currencies", freq=ic_freq)
-        elif type == DataType.CRYPTO:
+        elif type == UnderlyingType.CRYPTO:
             data = self.load_data(name=symbol, type="currencies", freq=ic_freq)
         else:
-            raise NotImplementedError(f"DataType {type} not supported in Investing.com data source")
+            raise NotImplementedError(f"UnderlyingType {type} not supported in Investing.com data source")
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
         if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():

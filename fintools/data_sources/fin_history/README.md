@@ -18,7 +18,7 @@ Other fields provided are kept unchanged in the `DataFrame`.
 
 ## Supported Asset Types
 
-`DataType` enum:
+`UnderlyingType` enum:
 
 ```json
 STOCK, INDEX, FUTURES, FOREX, CRYPTO
@@ -42,13 +42,13 @@ Frequency values are mapped by each provider through `freq`.
 
 ```
 
-from your_package import YourDataSource, DataType, DataFrequency
+from your_package import YourDataSource, UnderlyingType, DataFrequency
 
 source = YourDataSource(token="your-token")
 
 df = source.history(
     symbol="AAPL",
-    type=DataType.STOCK,
+    type=UnderlyingType.STOCK,
     start="2023-01-01",
     end="2023-12-31",
     freq=DataFrequency.DAILY
@@ -65,7 +65,7 @@ To add a new provider, subclass `OHLCDataSource` and implement three abstract me
 
 ```
 
-from your_package import OHLCDataSource, DataType, DataFrequency
+from your_package import OHLCDataSource, UnderlyingType, DataFrequency
 import pandas as pd
 
 class ExampleSource(OHLCDataSource):

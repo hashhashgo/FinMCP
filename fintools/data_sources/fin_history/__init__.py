@@ -1,4 +1,4 @@
-from .base import DataFrequency, DataType, OHLCDataSource, STANDARD_COLUMN_NAMES
+from .base import DataFrequency, UnderlyingType, OHLCDataSource, STANDARD_COLUMN_NAMES
 import pkgutil
 import importlib
 import inspect
@@ -43,7 +43,7 @@ _discover_datasource_classes()
 
 __all__ = [
     "OHLCDataSource",
-    "DataType",
+    "UnderlyingType",
     "DataFrequency",
     "STANDARD_COLUMN_NAMES",
     "DATASOURCES",

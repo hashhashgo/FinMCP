@@ -1,58 +1,83 @@
-import pkgutil
-from pathlib import Path
-from typing import Any, Dict
-import importlib
-from fastmcp import FastMCP
-import socket
-from langchain_mcp_adapters.sessions import Connection, StreamableHttpConnection
-from multiprocessing import Process
-import requests
-import time
 import os
+import socket
 import json
+import time
+
+from langchain_mcp_adapters.sessions import Connection, StreamableHttpConnection
+from fastmcp import FastMCP
+from multiprocessing import Process
+
+from typing import Dict, List, Tuple
+
+from .ping_client import PingClient
+
 import logging
 logger = logging.getLogger(__name__)
 
+
+CONNECTION_RECORD_FILE = os.getenv("CONNECTION_RECORD_FILE", "agent_tools_service_ports.json")
+
+ENTRYPOINT_GROUP = "fintools.mcp_services"
+MCP_HOST = os.environ.get("FINTOOLS_HOST", "127.0.0.1")
+MCP_PATH = "/mcp"
+
+
 MCP_SERVICES: Dict[str, FastMCP] = {}
 MCP_CONNECTIONS: Dict[str, Connection] = \
-    json.load(open("agent_tools_service_ports.json", "r")) \
-        if os.path.exists("agent_tools_service_ports.json") else {}
+    json.load(open(CONNECTION_RECORD_FILE, "r")) \
+        if os.path.exists(CONNECTION_RECORD_FILE) else {}
 MCP_PROCESSES: Dict[str, Process] = {}
 
-def _discover_mcp_service_modules():
-    """
-    扫描当前包下所有 .py 模块，确保它们被导入以注册 MCP 服务。
-    """
-    package_name = __name__
-    package_path = Path(__file__).parent
 
-    for module_info in pkgutil.iter_modules([str(package_path)]):
-        mod_name = module_info.name
 
-        if mod_name == "__init__" or mod_name.startswith("_"):
+def _discover_services() -> None:
+    """
+    从 entry_points 发现所有 MCP 服务。
+    返回列表: [(service_name, module, attr), ...]
+    """
+    from importlib.metadata import entry_points
+
+    eps = entry_points(group=ENTRYPOINT_GROUP)
+
+    for ep in eps:
+        # ep.module / ep.attr 类似 "pkg.mod" / "mcp"
+        # ep.load() 返回对象，这里可以顺便验证一下类型
+        try:
+            obj = ep.load()
+        except Exception:
+            logger.warning(f"Failed to load MCP service entry point: {ep.name}", exc_info=True)
             continue
 
-        full_name = f"{package_name}.{mod_name}"
-        module = importlib.import_module(full_name)
-        
-        for attr_name in dir(module):
-            attr = getattr(module, attr_name)
-            if isinstance(attr, FastMCP):
-                MCP_SERVICES[mod_name] = attr
+        if not isinstance(obj, FastMCP):
+            continue
 
-_discover_mcp_service_modules()
+        # service_name 用 mcp.name，而不是 ep.name
+        MCP_SERVICES[ep.name] = obj
+
 
 def _run_service(mcp_service: str, port: int) -> None:
+    if not MCP_SERVICES:
+        _discover_services()
     MCP_SERVICES[mcp_service].run(
         transport="http",
-        host=os.getenv("SERVICE_HOST", "0.0.0.0"),
+        host=MCP_HOST,
         port=port,
-        path="/mcp",
+        path=MCP_PATH,
         show_banner=False
     )
 
 def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, test_timeout: int = 1) -> None:
+    if not MCP_SERVICES:
+        _discover_services()
     global MCP_CONNECTIONS
+    if MCP_PROCESSES:
+        logger.info("MCP services are already running.")
+        check_services_running(test_max_retries, test_timeout)
+        return
+    if MCP_CONNECTIONS:
+        logger.info("MCP services connections already exist. Assuming services are running.")
+        check_services_running(test_max_retries, test_timeout)
+        return
     if os.getenv("START_SERVICES_INTERNAL", "false").lower() == "true" or start_anyway:
         logger.info("Starting MCP services...")
         current_port = 8000
@@ -61,21 +86,21 @@ def start_all_services(start_anyway: bool = False, test_max_retries: int = 10, t
             while current_port < 9000:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     try:
-                        s.bind(("127.0.0.1", current_port))
+                        s.bind((MCP_HOST, current_port))
                         break
                     except OSError:
-                        logger.debug(f"Port {current_port} is in use, trying next port...")
+                        logger.info(f"Port {current_port} is in use, trying next port...")
                         current_port += 1
             MCP_PROCESSES[mcp_service] = Process(target=_run_service, args=(mcp_service, current_port))
             MCP_PROCESSES[mcp_service].daemon = True
             MCP_PROCESSES[mcp_service].start()
             MCP_CONNECTIONS[mcp_service] = StreamableHttpConnection(
                 transport="streamable_http",
-                url=f"http://127.0.0.1:{current_port}/mcp",
+                url=f"http://{MCP_HOST}:{current_port}/mcp",
             )
             logger.info(f"MCP service {mcp_service} is running on port {current_port}")
             current_port += 1
-        with open("agent_tools_service_ports.json", "w") as f:
+        with open(CONNECTION_RECORD_FILE, "w") as f:
             json.dump(MCP_CONNECTIONS, f, indent=4)
     else:
         logger.info("Skipping MCP services startup as per configuration.")
@@ -89,17 +114,17 @@ def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) ->
             url = MCP_CONNECTIONS[mcp_service].get("url", None)
             assert url is not None, f"MCP service {mcp_service} is not a HTTP service."
             if retry_counts[mcp_service] == -1: continue
+            time_start = time.time()
             try:
-                req = requests.get(url, timeout=test_timeout)
-                if req.status_code >= 500: # 启动完成会返回406，因为格式不对
-                    all_running = False
-                    retry_counts[mcp_service] += 1
-                    time.sleep(test_timeout)
-                else:
-                    retry_counts[mcp_service] = -1
+                client = PingClient(url, timeout=test_timeout)
+                client.ping_connection()
+                client.disconnect()
+                retry_counts[mcp_service] = -1
             except Exception:
                 all_running = False
                 retry_counts[mcp_service] += 1
+                while time.time() - time_start < test_timeout:
+                    time.sleep(0.1)
             if retry_counts[mcp_service] > test_max_retries:
                 raise RuntimeError(f"MCP service {mcp_service} failed to connect after {test_max_retries} retries.")
         if all_running:
@@ -107,14 +132,24 @@ def check_services_running(test_max_retries: int = 10, test_timeout: int = 1) ->
     logger.info("All MCP services are up and running.")
 
 def close_all_services() -> None:
+    if not MCP_PROCESSES:
+        MCP_CONNECTIONS.clear()
+        return
     logger.info("Closing all MCP services...")
     for mcp_service, process in MCP_PROCESSES.items():
         logger.info(f"Terminating MCP service: {mcp_service}")
-        process.terminate()
-        process.join()
+        try:
+            process.terminate()
+            process.join()
+            del MCP_CONNECTIONS[mcp_service]
+            with open(CONNECTION_RECORD_FILE, "w") as f:
+                json.dump(MCP_CONNECTIONS, f, indent=4)
+        except Exception as e:
+            logger.error(f"Error terminating MCP service {mcp_service}: {e}")
     MCP_PROCESSES.clear()
     MCP_CONNECTIONS.clear()
     logger.info("All MCP services have been closed.")
-    os.remove("agent_tools_service_ports.json")
+    if not json.load(open(CONNECTION_RECORD_FILE)):
+        os.remove(CONNECTION_RECORD_FILE)
 
-__all__ = ["MCP_SERVICES", "MCP_CONNECTIONS", "MCP_PROCESSES", "start_all_services", "close_all_services"]
+__all__ = ["MCP_CONNECTIONS", "start_all_services", "close_all_services"]

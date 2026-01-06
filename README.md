@@ -189,7 +189,7 @@ def echo(text: str):
 ## 2. Register via `entry_points` in Your Project
 
 ```toml
-[project.entry-points."fintools.services"]
+[project.entry-points."fintools.mcp_services"]
 myservice = "my_pkg.my_service:mcp"
 ```
 

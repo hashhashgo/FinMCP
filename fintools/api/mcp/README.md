@@ -5,7 +5,7 @@ For more information, please read [README](../../README.md)***
 
 # Introduction
 A dynamic, auto-discovering MCP service manager built on FastMCP.
-It automatically loads all FastMCP service instances defined under the fintools.agent_tools package and provides:
+It automatically loads all FastMCP service instances defined under the fintools.api.mcp package and provides:
 
 * Automatic MCP server startup (multi-process, HTTP)
 
@@ -24,7 +24,7 @@ It automatically loads all FastMCP service instances defined under the fintools.
 | **Multi-process server manager** | `start_all_services()` launches each service as an independent HTTP MCP server.<br />`close_all_services()` for closing all services. |
 | **External server support**      | Can connect to existing running servers instead of starting new ones. |
 | **Environment-driven config**    | `.env` controls whether to start or merely connect to services. |
-| **Auto-launcher**                | `python -m fintools.agent_tools` starts all services externally (recommended). |
+| **Auto-launcher**                | `python -m fintools.api.mcp` starts all services externally (recommended). |
 | **Health checker**               | Periodic ping monitoring for all active MCP servers.         |
 
 # Usage
@@ -32,7 +32,7 @@ It automatically loads all FastMCP service instances defined under the fintools.
 Import the built-in control module:
 
 ```python
-from fintools.agent_tools import (
+from fintools.api.mcp import (
     MCP_SERVICES,
     MCP_CONNECTIONS,
     MCP_PROCESSES,
@@ -64,7 +64,7 @@ start_all_services(start_anyway=True)
 ## Starting Services Externally (Recommended)
 
 ```bash
-uv run -m fintools.agent_tools
+uv run -m fintools.api.mcp
 ```
 
 This executes the package’s `__main__`, which:
@@ -138,7 +138,7 @@ Once services are started or connected, simply load their tools normally:
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from fintools.agent_tools import MCP_CONNECTIONS
+from fintools.api.mcp import MCP_CONNECTIONS
 
 client = MultiServerMCPClient(MCP_CONNECTIONS)
 

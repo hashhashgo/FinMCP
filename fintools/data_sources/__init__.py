@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta, timezone
 
 from fintools.utils import _parse_datetime
 
-class DataType(Enum):
+class UnderlyingType(Enum):
     STOCK = 'stock'
     INDEX = 'index'
     COMMODITY = 'commodity'

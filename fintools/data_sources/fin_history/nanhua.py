@@ -1,4 +1,4 @@
-from .base import OHLCDataSource, DataType, DataFrequency
+from .base import OHLCDataSource, UnderlyingType, DataFrequency
 from fintools.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -40,8 +40,8 @@ class NanHuaDataSource(OHLCDataSource):
         common_fields= ("freq", ),
         except_fields=("type", ),
     )
-    def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
-        assert type == DataType.COMMODITY, "NanHuaDataSource only supports commodity data"
+    def history(self, symbol: str, type: UnderlyingType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
+        assert type == UnderlyingType.COMMODITY, "NanHuaDataSource only supports commodity data"
         nh_freq = self._map_frequency(freq)
         data_raw = requests.get(f'{self.data_server_url}?ticker={symbol}&freq={nh_freq}').json()
         df = pd.DataFrame(data_raw)

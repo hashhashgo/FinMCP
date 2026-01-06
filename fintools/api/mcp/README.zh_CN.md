@@ -5,7 +5,7 @@ Languages: [English](README.md) | 中文
 # 介绍
 
 一个基于 **FastMCP** 的动态、自动发现式 MCP 服务管理器。
-它会自动加载 `fintools.agent_tools` 包中定义的所有 `FastMCP` 服务实例，并提供：
+它会自动加载 `fintools.api.mcp` 包中定义的所有 `FastMCP` 服务实例，并提供：
 
 * 自动启动 MCP Server（多进程 + HTTP）
 * 连接到已存在的远程 MCP 服务
@@ -21,7 +21,7 @@ Languages: [English](README.md) | 中文
 | **多进程 Server 管理器** | `start_all_services()` 会为每个服务启动独立的 HTTP MCP 服务。<br>使用 `close_all_services()` 关闭全部服务。 |
 | **支持外部服务**         | 可以连接外部已运行的 MCP 服务，而不是自动启动它们。                                                         |
 | **环境变量控制**         | 使用 `.env` 决定是否启动或仅连接服务。                                                              |
-| **自动启动器**          | `python -m fintools.agent_tools` 可一次性启动所有服务（推荐）。                                  |
+| **自动启动器**          | `python -m fintools.api.mcp` 可一次性启动所有服务（推荐）。                                  |
 | **健康检测器**          | 周期性 ping 检查所有服务是否存活。                                                                 |
 
 # 使用方法
@@ -29,7 +29,7 @@ Languages: [English](README.md) | 中文
 导入模块：
 
 ```python
-from fintools.agent_tools import (
+from fintools.api.mcp import (
     MCP_SERVICES,
     MCP_CONNECTIONS,
     MCP_PROCESSES,
@@ -61,7 +61,7 @@ start_all_services(start_anyway=True)
 ## 外部启动服务（推荐）
 
 ```bash
-uv run -m fintools.agent_tools
+uv run -m fintools.api.mcp
 ```
 
 这将执行包内的 `__main__`，并将：
@@ -136,7 +136,7 @@ def some_tool(...):
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from fintools.agent_tools import MCP_CONNECTIONS
+from fintools.api.mcp import MCP_CONNECTIONS
 
 client = MultiServerMCPClient(MCP_CONNECTIONS)
 

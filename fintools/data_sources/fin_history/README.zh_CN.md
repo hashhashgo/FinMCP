@@ -18,7 +18,7 @@ Languages: [English](README.md) | 中文
 
 ## 支持的资产类型
 
-`DataType` 枚举：
+`UnderlyingType` 枚举：
 
 ```json
 STOCK, INDEX, FUTURES, FOREX, CRYPTO
@@ -41,13 +41,13 @@ MINUTE1, MINUTE5, MINUTE15, MINUTE30, MINUTE60, DAILY, WEEKLY, MONTHLY, ...
 ## 基本使用示例
 
 ```python
-from your_package import YourDataSource, DataType, DataFrequency
+from your_package import YourDataSource, UnderlyingType, DataFrequency
 
 source = YourDataSource(token="your-token")
 
 df = source.history(
     symbol="AAPL",
-    type=DataType.STOCK,
+    type=UnderlyingType.STOCK,
     start="2023-01-01",
     end="2023-12-31",
     freq=DataFrequency.DAILY
@@ -63,7 +63,7 @@ print(df.head())
 只需继承 `OHLCDataSource` 并实现三个抽象方法：
 
 ```python
-from your_package import OHLCDataSource, DataType, DataFrequency
+from your_package import OHLCDataSource, UnderlyingType, DataFrequency
 import pandas as pd
 
 class ExampleSource(OHLCDataSource):

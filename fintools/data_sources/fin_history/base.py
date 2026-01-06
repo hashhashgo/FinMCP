@@ -6,7 +6,7 @@ from typing import Literal, Callable, Optional, Union
 from enum import Enum
 from datetime import datetime, date, timedelta
 
-from .. import DataSource, DataFrequency, DataType
+from .. import DataSource, DataFrequency, UnderlyingType
 
 STANDARD_COLUMN_NAMES = ["date", "open", "high", "low", "close", "volume"]
 
@@ -21,7 +21,7 @@ class OHLCDataSource(DataSource, ABC):
     def history(
         self,
         symbol: str,
-        type: DataType,
+        type: UnderlyingType,
         start: Union[str, datetime, date, int] = 0,
         end: Union[str, datetime, date, int] = datetime.now(),
         freq: DataFrequency = DataFrequency.DAILY

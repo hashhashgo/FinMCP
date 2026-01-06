@@ -187,7 +187,7 @@ def echo(text: str):
 ## 2. 在项目中注册 entry_points
 
 ```toml
-[project.entry-points."fintools.services"]
+[project.entry-points."fintools.mcp_services"]
 myservice = "my_pkg.my_service:mcp"
 ```
 

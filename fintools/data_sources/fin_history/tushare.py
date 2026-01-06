@@ -1,4 +1,4 @@
-from .base import OHLCDataSource, DataType, DataFrequency
+from .base import OHLCDataSource, UnderlyingType, DataFrequency
 from fintools.databases.history_db import history_cache
 import pandas as pd
 import sqlite3
@@ -45,11 +45,11 @@ class TushareDataSource(OHLCDataSource):
         except_fields=(),
         missing_threshold=0
     )
-    def history(self, symbol: str, type: DataType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
-        if type == DataType.STOCK: return self._format_dataframe(self._history_stock(symbol, start, end, freq))
-        elif type == DataType.INDEX: return self._format_dataframe(self._history_index(symbol, start, end, freq))
-        elif type == DataType.FOREX: return self._format_dataframe(self._history_forex(symbol, start, end, freq))
-        elif type == DataType.COMMODITY: return self._format_dataframe(self._history_commodity(symbol, start, end, freq))
+    def history(self, symbol: str, type: UnderlyingType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
+        if type == UnderlyingType.STOCK: return self._format_dataframe(self._history_stock(symbol, start, end, freq))
+        elif type == UnderlyingType.INDEX: return self._format_dataframe(self._history_index(symbol, start, end, freq))
+        elif type == UnderlyingType.FOREX: return self._format_dataframe(self._history_forex(symbol, start, end, freq))
+        elif type == UnderlyingType.COMMODITY: return self._format_dataframe(self._history_commodity(symbol, start, end, freq))
         else: raise NotImplementedError(f"Data type {type} not supported in Tushare")
 
     def _history_stock(self, symbol: str, start: Union[str, datetime, date, int], end: Union[str, datetime, date, int], freq: DataFrequency) -> pd.DataFrame:

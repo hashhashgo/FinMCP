@@ -14,7 +14,7 @@ from importlib.resources import files
 if not __package__:
     sys.path.append(str(Path(__file__).parent.parent.parent))
 from fintools.data_sources.fin_history import OHLCDataSource
-from fintools.data_sources.fin_history import DataType, DataFrequency, STANDARD_COLUMN_NAMES, DATASOURCES
+from fintools.data_sources.fin_history import UnderlyingType, DataFrequency, STANDARD_COLUMN_NAMES, DATASOURCES
 
 mcp = FastMCP(
     name = "Financial Data History MCP Service",
@@ -42,7 +42,7 @@ If an error occurs, returns a list with a single dictionary containing:
 Parameters:
 - datasource: str, Data source, currently supports: "{'" / "'.join(DATASOURCES.keys())}"
 - symbol: str, The symbol code, e.g., "AAPL", "000001.SZ", "AUDCAD.FXCM". It's recommended to use list_indices tool to find valid symbols, or refer to the data source documentation.
-- type: str, The type of the symbol, supports: "{'" / "'.join([t.value for t in DataType])}"
+- type: str, The type of the symbol, supports: "{'" / "'.join([t.value for t in UnderlyingType])}"
 - start: str, start time, supports: "YYYY-MM-DD" / "YYYY-MM-DD HH:MM:SS"
 - end: str, end time, supports: "YYYY-MM-DD" / "YYYY-MM-DD HH:MM:SS", default is current time
 - freq: str, data frequency, supports: "{'" / "'.join([f.value for f in DataFrequency])}", default is "daily"
@@ -67,9 +67,9 @@ def history(
         ds = datasources[datasource]
 
         try:
-            data_type = DataType(type)
+            data_type = UnderlyingType(type)
         except ValueError:
-            raise ValueError(f"Unknown data type: {type}\n\nSupported types: {' / '.join([t.value for t in DataType])}")
+            raise ValueError(f"Unknown data type: {type}\n\nSupported types: {' / '.join([t.value for t in UnderlyingType])}")
 
         try:
             freq_enum = DataFrequency(freq)
