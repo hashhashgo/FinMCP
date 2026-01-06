@@ -20,7 +20,7 @@ FinTools 是成为一个 **轻量、可组合、可复用的金融工具集合**
 
 根据使用方式不同，FinTools 提供不同形态的API：
 
-- [函数调用 API](./fintools/api/F/README.md)：`fintools.api.F`
+- [函数调用 API](./fintools/api/F/README.zh_CN.md)：`fintools.api.F`
 - [MCP API](./fintools/api/mcp/README.zh_CN.md)：`fintools.api.mcp`
 
 两种 API **功能来源一致，仅调用方式不同**。
