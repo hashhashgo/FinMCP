@@ -100,6 +100,7 @@ def get_data(
             logger.warning(f"Warning: Failed to compute indicator '{indicator}': {e}")
     
     df = df.reset_index()
+    df = pd.DataFrame(df)
     df['date'] = pd.to_datetime(df['date']).dt.tz_convert(tzlocal.get_localzone())
 
     return df
