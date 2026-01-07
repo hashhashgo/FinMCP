@@ -43,6 +43,7 @@ class OHLCDataSource(DataSource, ABC):
                 df[standard] = np.nan
             df = df.rename(columns={custom: standard})
         df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values(by='date', ascending=False)
         return df
     
     def _map_frequency(self, freq: DataFrequency) -> str:
