@@ -11,6 +11,7 @@ class UnderlyingType(Enum):
     COMMODITY = 'commodity'
     BOND = 'bond'
     FOREX = 'forex'
+    ETF = 'etf'
     CRYPTO = 'crypto'
     OTHER = 'other'
 

@@ -50,6 +50,7 @@ class TushareDataSource(OHLCDataSource):
         elif type == UnderlyingType.INDEX: return self._format_dataframe(self._history_index(symbol, start, end, freq))
         elif type == UnderlyingType.FOREX: return self._format_dataframe(self._history_forex(symbol, start, end, freq))
         elif type == UnderlyingType.COMMODITY: return self._format_dataframe(self._history_commodity(symbol, start, end, freq))
+        elif type == UnderlyingType.ETF: return self._format_dataframe(self._history_etf(symbol, start, end, freq))
         else: raise NotImplementedError(f"Data type {type} not supported in Tushare")
 
     def _history_stock(self, symbol: str, start: Union[str, datetime, date, int], end: Union[str, datetime, date, int], freq: DataFrequency) -> pd.DataFrame:
@@ -62,10 +63,12 @@ class TushareDataSource(OHLCDataSource):
             df = self.__class__.pro.weekly(ts_code=symbol, start_date=start_date, end_date=end_date)
         elif ts_freq == "monthly":
             df = self.__class__.pro.monthly(ts_code=symbol, start_date=start_date, end_date=end_date)
-        else:
+        elif ts_freq in ['1min', '5min', '15min', '30min', '60min']:
             start_date = self._parse_datetime(start).strftime("%Y-%m-%d %H:%M:%S")
             end_date = self._parse_datetime(end).strftime("%Y-%m-%d %H:%M:%S")
             df = self.__class__.pro.stk_mins(ts_code=symbol, freq=self._map_frequency(freq), start_date=start_date, end_date=end_date)
+        else:
+            raise NotImplementedError(f"Frequency {freq} not supported for stock data in Tushare")
         df['trade_date'] = pd.to_datetime(df['trade_date']).dt.tz_localize('Asia/Shanghai')
         return df
 
@@ -107,11 +110,28 @@ class TushareDataSource(OHLCDataSource):
         elif ts_freq == "monthly":
             df = self.__class__.pro.fut_weekly_monthly(ts_code=symbol, start_date=start_date, end_date=end_date, freq="month")
             return df
-        else:
+        elif ts_freq in ['1min', '5min', '15min', '30min', '60min']:
             start_date = self._parse_datetime(start).strftime("%Y-%m-%d %H:%M:%S")
             end_date = self._parse_datetime(end).strftime("%Y-%m-%d %H:%M:%S")
             df = self.__class__.pro.fut_mins(ts_code=symbol, freq=self._map_frequency(freq), start_date=start_date, end_date=end_date)
             return df
+        else:
+            raise NotImplementedError(f"Frequency {freq} not supported for commodity data in Tushare")
+    
+    def _history_etf(self, symbol: str, start: Union[str, datetime, date, int], end: Union[str, datetime, date, int], freq: DataFrequency) -> pd.DataFrame:
+        ts_freq = self._map_frequency(freq)
+        start_date = self._parse_datetime(start).strftime("%Y%m%d")
+        end_date = self._parse_datetime(end).strftime("%Y%m%d")
+        if ts_freq == "daily":
+            df = self.__class__.pro.fund_daily(ts_code=symbol, start_date=start_date, end_date=end_date)
+        elif ts_freq in ['1min', '5min', '15min', '30min', '60min']:
+            start_date = self._parse_datetime(start).strftime("%Y-%m-%d %H:%M:%S")
+            end_date = self._parse_datetime(end).strftime("%Y-%m-%d %H:%M:%S")
+            df = self.__class__.pro.stk_mins(ts_code=symbol, freq=self._map_frequency(freq), start_date=start_date, end_date=end_date)
+        else:
+            raise NotImplementedError(f"Frequency {freq} not supported for ETF data in Tushare")
+        df['trade_date'] = pd.to_datetime(df['trade_date']).dt.tz_localize('Asia/Shanghai')
+        return df
 
     def subscribe(self, symbol: str, interval: str, callback: Callable) -> None:
         # Tushare does not support real-time data subscription
