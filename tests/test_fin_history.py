@@ -13,6 +13,15 @@ def test_tushare_history():
     df_tu = tu.history("600519.SH", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_tu)
 
+def test_efinance_history():
+    ef = DATASOURCES['efinance']()
+    df_ef = ef.history("600519", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    assert len(df_ef)
+    df_ef = ef.history("000300", type=UnderlyingType.INDEX, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    assert len(df_ef)
+    df_ef = ef.history("510300", type=UnderlyingType.ETF, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    assert len(df_ef)
+
 def test_yahoo_finance_history():
     yf = DATASOURCES['yahoo_finance']()
     df_yf = yf.history("AAAA", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
