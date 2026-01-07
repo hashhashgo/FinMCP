@@ -81,6 +81,10 @@ def get_data(
         freq=freq,
     )
 
+    if df.empty:
+        logger.warning("No data fetched, returning empty DataFrame")
+        return pd.DataFrame(columns=STANDARD_COLUMN_NAMES)
+
     logger.debug("Raw data fetched:")
     logger.debug(df)
 

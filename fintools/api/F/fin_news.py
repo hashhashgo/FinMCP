@@ -53,11 +53,12 @@ def list_news(
         end=end
     )
 
+    if df.empty:
+        logger.warning("No news data fetched, returning empty DataFrame")
+        return pd.DataFrame(columns=['date', 'code', 'title', 'content'])
+
     logger.debug("News data fetched:")
     logger.debug(df)
-
-    if df.empty:
-        return pd.DataFrame(columns=['date', 'code', 'title', 'content'])
 
     df['date'] = pd.to_datetime(df['date']).dt.tz_convert(tzlocal.get_localzone()).dt.strftime("%Y-%m-%d %H:%M:%S")
 

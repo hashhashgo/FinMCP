@@ -51,11 +51,12 @@ def list_reports(
         end=end
     )
 
-    logger.debug("News data fetched:")
-    logger.debug(df)
-
     if df.empty:
+        logger.warning("No reports data fetched, returning empty DataFrame")
         return pd.DataFrame(columns=['date', 'code', 'title', 'content'])
+
+    logger.debug("Reports data fetched:")
+    logger.debug(df)
 
     df['date'] = pd.to_datetime(df['date']).dt.tz_convert(tzlocal.get_localzone()).dt.strftime("%Y-%m-%d %H:%M:%S")
 
