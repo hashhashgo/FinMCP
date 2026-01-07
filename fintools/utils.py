@@ -6,8 +6,8 @@ def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
         datetime_output = datetime_input
     elif isinstance(datetime_input, date):
         datetime_output = datetime(datetime_input.year, datetime_input.month, datetime_input.day)
-    elif isinstance(datetime_input, int):
-        if datetime_input > 9999999999: datetime_input = datetime_input // 1000
+    elif isinstance(datetime_input, int): # us or s timestamp
+        if datetime_input > 9999999999999: datetime_input = datetime_input // 1000000
         datetime_output = datetime.fromtimestamp(datetime_input, tz=timezone.utc)
     elif isinstance(datetime_input, str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):

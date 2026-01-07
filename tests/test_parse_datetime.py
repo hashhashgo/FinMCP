@@ -23,9 +23,9 @@ def test_datasource_parse_datetime():
     ts_input = int(time.mktime(dt_input.timetuple()))
     assert ds._parse_datetime(ts_input) == dt_input.astimezone()
 
-    # Test integer timestamp input (milliseconds)
-    ts_input_ms = ts_input * 1000
-    assert ds._parse_datetime(ts_input_ms) == dt_input.astimezone()
+    # Test integer timestamp input (microseconds)
+    ts_input_us = ts_input * 1000000
+    assert ds._parse_datetime(ts_input_us) == dt_input.astimezone()
 
     # Test string input in various formats
     str_inputs = [
@@ -74,9 +74,9 @@ def test_utils_parse_datetime():
     ts_input = int(time.mktime(dt_input.timetuple()))
     assert _parse_datetime(ts_input) == dt_input.astimezone()
 
-    # Test integer timestamp input (milliseconds)
-    ts_input_ms = ts_input * 1000
-    assert _parse_datetime(ts_input_ms) == dt_input.astimezone()
+    # Test integer timestamp input (microseconds)
+    ts_input_us = ts_input * 1000000
+    assert _parse_datetime(ts_input_us) == dt_input.astimezone()
 
     # Test string input in various formats
     str_inputs = [
