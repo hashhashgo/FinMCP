@@ -20,7 +20,6 @@ from .utils import *
 
 class IntervalDB(BaseDB):
     def __init__(self, table_basename: str, db_path: str = os.getenv("FINTOOLS_DB", "history.db")):
-        assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename + "_intervals"
         self.tables = {}
@@ -223,7 +222,6 @@ class IntervalDB(BaseDB):
 
 class HistoryDB(BaseDB):
     def __init__(self, table_basename: str, db_path: str = os.getenv("FINTOOLS_DB", "history.db"), missing_threshold: int = 1):
-        assert os.path.exists(db_path), f"数据库文件不存在：{db_path}"
         self.db_path = db_path
         self.table_basename = table_basename
         self.missing_threshold = missing_threshold

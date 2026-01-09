@@ -92,6 +92,7 @@ def get_data(
         df = pd.DataFrame(df[STANDARD_COLUMN_NAMES])
     
     from stockstats import wrap
+    df = df.sort_values(by='date', ascending=True)
     df = wrap(df)
     for indicator in [ind.strip().lower() for ind in indicators if ind.strip()]:
         try:
@@ -101,6 +102,7 @@ def get_data(
     
     df = df.reset_index()
     df = pd.DataFrame(df)
+    df = df.sort_values(by='date', ascending=True)
     df['date'] = pd.to_datetime(df['date']).dt.tz_convert(tzlocal.get_localzone())
 
     return df
