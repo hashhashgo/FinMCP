@@ -1,4 +1,5 @@
 from datetime import datetime, date, timezone
+from dateutil import parser
 
 def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
     datetime_output = None
@@ -10,6 +11,10 @@ def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
         if datetime_input > 9999999999999: datetime_input = datetime_input // 1000000
         datetime_output = datetime.fromtimestamp(datetime_input, tz=timezone.utc)
     elif isinstance(datetime_input, str):
+        try:
+            datetime_output = parser.isoparse(datetime_input)
+        except Exception:
+            pass
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
             try:
                 datetime_output = datetime.strptime(datetime_input, fmt)
