@@ -76,14 +76,20 @@ class TushareDataSource(OHLCDataSource):
         ts_freq = self._map_frequency(freq)
         start_date = self._parse_datetime(start).strftime("%Y%m%d")
         end_date = self._parse_datetime(end).strftime("%Y%m%d")
-        if ts_freq == "daily":
-            df = self.__class__.pro.index_daily(ts_code=symbol, start_date=start_date, end_date=end_date)
-        elif ts_freq == "weekly":
-            df = self.__class__.pro.index_weekly(ts_code=symbol, start_date=start_date, end_date=end_date)
-        elif ts_freq == "monthly":
-            df = self.__class__.pro.index_monthly(ts_code=symbol, start_date=start_date, end_date=end_date)
+        if symbol in ['XIN9', 'HSI', 'HKTECH', 'HKAH', 'DJI', 'SPX', 'IXIC', 'FTSE', 'FCHI', 'GDAXI', 'N225', 'KS11', 'AS51', 'SENSEX', 'IBOVESPA', 'RTS', 'TWII', 'CKLSE', 'SPTSX', 'CSX5P', 'RUT']:
+            if ts_freq == "daily":
+                df = self.__class__.pro.index_global(ts_code=symbol, start_date=start_date, end_date=end_date)
+            else:
+                raise NotImplementedError(f"Frequency {freq} not supported for global index data in Tushare")
         else:
-            raise NotImplementedError(f"Frequency {freq} not supported for index data in Tushare")
+            if ts_freq == "daily":
+                df = self.__class__.pro.index_daily(ts_code=symbol, start_date=start_date, end_date=end_date)
+            elif ts_freq == "weekly":
+                df = self.__class__.pro.index_weekly(ts_code=symbol, start_date=start_date, end_date=end_date)
+            elif ts_freq == "monthly":
+                df = self.__class__.pro.index_monthly(ts_code=symbol, start_date=start_date, end_date=end_date)
+            else:
+                raise NotImplementedError(f"Frequency {freq} not supported for index data in Tushare")
         df['trade_date'] = pd.to_datetime(df['trade_date']).dt.tz_localize('Asia/Shanghai')
         return df
         

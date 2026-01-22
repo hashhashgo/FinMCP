@@ -5,7 +5,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 
-from fintools import MCP_CONNECTIONS, start_all_services, close_all_services
+from fintools.api.mcp import MCP_CONNECTIONS, start_all_services, close_all_services
 
 import dotenv
 

@@ -10,37 +10,39 @@ dotenv.load_dotenv()
 
 def test_tushare_history():
     tu = DATASOURCES['tushare']()
-    df_tu = tu.history("600519.SH", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_tu = tu.history("600519.SH", type=UnderlyingType.STOCK, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
+    assert len(df_tu)
+    df_tu = tu.history("IXIC", type=UnderlyingType.INDEX, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_tu)
 
 def test_efinance_history():
     ef = DATASOURCES['efinance']()
-    df_ef = ef.history("600519", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_ef = ef.history("600519", type=UnderlyingType.STOCK, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_ef)
-    df_ef = ef.history("000300", type=UnderlyingType.INDEX, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_ef = ef.history("000300", type=UnderlyingType.INDEX, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_ef)
-    df_ef = ef.history("510300", type=UnderlyingType.ETF, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_ef = ef.history("510300", type=UnderlyingType.ETF, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_ef)
 
 def test_yahoo_finance_history():
     yf = DATASOURCES['yahoo_finance']()
-    df_yf = yf.history("AAAA", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_yf = yf.history("AAAA", type=UnderlyingType.STOCK, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_yf)
-    df_yf = yf.history("AAAA", type=UnderlyingType.STOCK, start=datetime.now() - timedelta(days=5), end=datetime.now(), freq=DataFrequency.MINUTE60)
+    df_yf = yf.history("AAAA", type=UnderlyingType.STOCK, start=0, end=datetime.now(), freq=DataFrequency.MINUTE60)
     assert len(df_yf)
 
 def test_investing_history():
     ic = DATASOURCES['investing.com']()
-    df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_ic)
-    df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=datetime.now() - timedelta(days=5), end=datetime.now(), freq=DataFrequency.MINUTE60)
+    df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=0, end=datetime.now(), freq=DataFrequency.MINUTE60)
     assert len(df_ic)
 
 def test_nanhua_history():
     nh = DATASOURCES['nanhua']()
-    df_nh = nh.history("PP_NH", type=UnderlyingType.COMMODITY, start=datetime.now() - timedelta(days=365*10), end=datetime.now(), freq=DataFrequency.DAILY)
+    df_nh = nh.history("PP_NH", type=UnderlyingType.COMMODITY, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_nh)
-    df_nh = nh.history("PP_NH", type=UnderlyingType.COMMODITY, start=datetime.now() - timedelta(days=5), end=datetime.now(), freq=DataFrequency.MINUTE60)
+    df_nh = nh.history("PP_NH", type=UnderlyingType.COMMODITY, start=0, end=datetime.now(), freq=DataFrequency.MINUTE60)
     assert len(df_nh)
 
 if __name__ == "__main__":
