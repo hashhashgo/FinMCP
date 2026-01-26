@@ -14,6 +14,7 @@ class UnderlyingType(Enum):
     ETF = 'etf'
     CRYPTO = 'crypto'
     OTHER = 'other'
+    UNKNOWN = 'unknown'
 
 class DataFrequency(Enum):
     MINUTE1 = 'minute1'

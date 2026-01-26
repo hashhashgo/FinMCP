@@ -34,7 +34,7 @@ class ChoiceDataSource(OHLCDataSource):
         key_fields=("symbol", "freq"),
         except_fields=("type",)
     )
-    def history(self, symbol: str, type: UnderlyingType = UnderlyingType.INDEX, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
+    def history(self, symbol: str, type: UnderlyingType = UnderlyingType.UNKNOWN, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         yf_freq = self._map_frequency(freq)
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
