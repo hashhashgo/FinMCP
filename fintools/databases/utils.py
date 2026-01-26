@@ -90,6 +90,8 @@ def _sqlite_value_to_pandas_value(df: pd.DataFrame, type_dict: Dict[str, str]) -
             df[col] = pd.to_datetime(df[col], unit='us', utc=True).dt.tz_convert(tzlocal.get_localzone_name())
         elif pd.api.types.is_bool_dtype(dtype):
             df[col] = df[col].astype(bool)
+        elif pd.api.types.is_numeric_dtype(dtype):
+            df[col] = df[col].astype(dtype)
         cols.append(col)
     return df[cols]
 

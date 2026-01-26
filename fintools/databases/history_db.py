@@ -329,9 +329,10 @@ class HistoryDB(BaseDB):
 
         sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns}) VALUES ({placeholders});'
 
-        df = df.where(df.notna(), None)
-        df = _pandas_value_to_sqlite_value(df)
-        data_tuples = [tuple(row) for row in df.itertuples(index=False)]
+        df = _pandas_value_to_sqlite_value(df.copy())
+        data_tuples = []
+        for row in df.itertuples(index=False):
+            data_tuples.append(tuple(x if not pd.isna(x) else None for x in tuple(row)))
 
         cur = self._get_cursor()
         with self._tx():

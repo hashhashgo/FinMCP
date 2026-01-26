@@ -31,7 +31,7 @@ class DataFrequency(Enum):
     WEEKLY = 'weekly'
     MONTHLY = 'monthly'
     MONTH3 = 'month3'
-
+    YEARLY = 'yearly'
 
 
 class DataSource(ABC):

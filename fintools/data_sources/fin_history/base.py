@@ -42,7 +42,9 @@ class OHLCDataSource(DataSource, ABC):
             if custom is None:
                 df[standard] = np.nan
             df = df.rename(columns={custom: standard})
-        df['date'] = pd.to_datetime(df['date'])
+        for col in ["open", "high", "low", "close", "volume"]:
+            if col in df.columns:
+                df[col] = df[col].astype("Float64")
         df = df.sort_values(by='date', ascending=True)
         return df
     
