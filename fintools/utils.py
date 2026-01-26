@@ -9,6 +9,8 @@ import json
 import tushare
 from tushare.pro.client import DataApi
 
+import importlib
+
 def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
     datetime_output = None
     if isinstance(datetime_input, datetime):
@@ -72,15 +74,15 @@ def stock_basic() -> pd.DataFrame:
     return df
 
 class SYMBOL_SEARCH_RESULT(TypedDict):
-    type: Literal['stock', 'index', 'etf']
+    type: Literal['stock', 'index', 'etf', 'unknown']
     symbol: str
     name: str
 
 _symbol_search_cache: Dict[str, SYMBOL_SEARCH_RESULT | None] = {}
 def symbol_search(
-    keyword: Annotated[str, "The symbol code or name to search for."] = ""
+    keyword: Annotated[str, "The symbol code or name to search for."] = "",
+    timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
 ) -> SYMBOL_SEARCH_RESULT | None:
-    raise NotImplementedError
     assert keyword, "Either symbol or name must be provided."
     global _symbol_search_cache
     if keyword in _symbol_search_cache:
@@ -99,32 +101,41 @@ def symbol_search(
         ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': keyword}
     
     # Try to search in indexes
-    if keyword and keyword in index_basic()['ts_code'].values:
+    elif keyword and keyword in index_basic()['ts_code'].values:
         res = index_basic()[index_basic()['ts_code'] == keyword].iloc[0]
         ret = {'type': 'index', 'symbol': keyword, 'name': res['name']}
     elif keyword and keyword in index_basic()['name'].values:
         res = index_basic()[index_basic()['name'] == keyword].iloc[0]
         ret = {'type': 'index', 'symbol': res['ts_code'], 'name': keyword}
     
-    # Try to fetch eastmoney
-    if not ret:
-        try:
-            req = requests.get(f"https://search-codetable.eastmoney.com/codetable/search/web?client=web&clientType=webSuggest&clientVersion=lastest&cb=jQuery35102584463847576248_1767928521853&keyword={keyword}&pageIndex=1&pageSize=10&securityFilter=&_=1767928521870")
-            s = req.text
-            s = s[s.index('(')+1: s.rindex(')')]
-            data = json.loads(s)
-            for info in data['result']:
-                type_name = info['securityTypeName']
-                if type_name == "基金":
-                    name = info['shortName']
-                    code = info['code']
-                    if len(get_data("tushare", f"{code}.SH", UnderlyingType.ETF)):
-                        ret = {'type': 'etf', 'symbol': f"{code}.SH", 'name': name}
-                    elif len(get_data("tushare", f"{code}.SZ", UnderlyingType.ETF)):
-                        ret = {'type': 'etf', 'symbol': f"{code}.SZ", 'name': name}
-        except Exception as e:
-            logger.debug(f"Failed to fetch symbol info from eastmoney for keyword {keyword}: {e}")
+    # # Try to fetch eastmoney
+    # if not ret:
+    #     try:
+    #         req = requests.get(f"https://search-codetable.eastmoney.com/codetable/search/web?client=web&clientType=webSuggest&clientVersion=lastest&cb=jQuery35102584463847576248_1767928521853&keyword={keyword}&pageIndex=1&pageSize=10&securityFilter=&_=1767928521870")
+    #         s = req.text
+    #         s = s[s.index('(')+1: s.rindex(')')]
+    #         data = json.loads(s)
+    #         for info in data['result']:
+    #             type_name = info['securityTypeName']
+    #             if type_name == "基金":
+    #                 name = info['shortName']
+    #                 code = info['code']
+    #                 if len(get_data("tushare", f"{code}.SH", UnderlyingType.ETF)):
+    #                     ret = {'type': 'etf', 'symbol': f"{code}.SH", 'name': name}
+    #                 elif len(get_data("tushare", f"{code}.SZ", UnderlyingType.ETF)):
+    #                     ret = {'type': 'etf', 'symbol': f"{code}.SZ", 'name': name}
+    #     except Exception as e:
+    #         logger.debug(f"Failed to fetch symbol info from eastmoney for keyword {keyword}: {e}")
 
+    elif not ret:
+        try:
+            ChoiceDataSource = importlib.import_module("fintools.data_sources.fin_history.choice").ChoiceDataSource
+            with ChoiceDataSource.borrow_choice(timeout=timeout) as choice:
+                data = choice.css(keyword, "NAME").Data
+                if keyword in data:
+                    ret = {'type': 'unknown', 'symbol': keyword, 'name': data[keyword][0]}
+        except: pass
+    
     if ret:
         _symbol_search_cache[keyword] = {
             'type': ret['type'],
