@@ -76,7 +76,7 @@ def _json_serialize(obj: Any) -> str:
 def _pandas_value_to_sqlite_value(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].astype('int64') // 1000
+            df[col] = df[col].dt.tz_convert("UTC").dt.tz_localize(None).astype('datetime64[us]').astype('int64')
         elif pd.api.types.is_bool_dtype(df[col]):
             df[col] = df[col].astype(int)
         elif df[col].dtype == 'object':
