@@ -45,6 +45,7 @@ class OHLCDataSource(DataSource, ABC):
         for col in ["open", "high", "low", "close", "volume"]:
             if col in df.columns:
                 df[col] = df[col].astype("Float64")
+        df = df.dropna(subset=['open', 'high', 'low', 'close'], how='all')
         df = df.sort_values(by='date', ascending=True)
         return df
     
