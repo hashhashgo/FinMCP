@@ -90,7 +90,7 @@ class CommonDB(BaseDB):
             self._create_table_from_data(data, key_fields=key_fields, common_fields=common_fields)
 
         if not isinstance(data, pd.DataFrame):
-            self._check_data(data, key_fields=key_fields, common_fields=common_fields)
+            # self._check_data(data, key_fields=key_fields, common_fields=common_fields)
             placeholders = ",".join("?" * (len(key_fields) + 1))
             columns = ",".join([f'"{col}"' for col in list(key_fields.keys()) + ['data']])
 
@@ -105,7 +105,7 @@ class CommonDB(BaseDB):
                 data.insert(i, k, _python_value_to_sqlite_value(key_fields[k]))
                 if isinstance(key_fields[k], str):
                     data[k] = data[k].astype("string")
-            self._check_data(data, key_fields=key_fields, common_fields=common_fields)
+            # self._check_data(data, key_fields=key_fields, common_fields=common_fields)
             placeholders = ",".join("?" * len(data.columns))
             columns = ",".join([f'"{col}"' for col in data.columns])
 

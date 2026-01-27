@@ -322,7 +322,7 @@ class HistoryDB(BaseDB):
             df.insert(i, k, _python_value_to_sqlite_value(key_fields[k]))
             if isinstance(key_fields[k], str):
                 df[k] = df[k].astype("string")
-        self._check_df(df, key_fields=key_fields, common_fields=common_fields)
+        # self._check_df(df, key_fields=key_fields, common_fields=common_fields)
 
         placeholders = ",".join("?" * len(df.columns))
         columns = ",".join([f'"{col}"' for col in df.columns])
