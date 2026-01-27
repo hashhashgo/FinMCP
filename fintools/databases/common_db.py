@@ -111,9 +111,13 @@ class CommonDB(BaseDB):
 
             sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns}) VALUES ({placeholders});'
 
-            data = data.where(data.notna(), None)
-            data = _pandas_value_to_sqlite_value(data)
-            data_tuples = [tuple(row) for row in data.itertuples(index=False)]
+            # data = data.where(data.notna(), None)
+            # data = _pandas_value_to_sqlite_value(data)
+            # data_tuples = [tuple(row) for row in data.itertuples(index=False)]
+            data = _pandas_value_to_sqlite_value(data.copy())
+            data_tuples = []
+            for row in data.itertuples(index=False):
+                data_tuples.append(tuple(x if not pd.isna(x) else None for x in tuple(row)))
 
             cur = self._get_cursor()
             with self._tx():
