@@ -73,6 +73,30 @@ def stock_basic() -> pd.DataFrame:
     _stock_basic = df
     return df
 
+global_index_map = {
+    'XIN9': '富时中国A50指数',
+    'HSI': '恒生指数',
+    'HKTECH': '恒生科技指数',
+    'HKAH': '恒生AH股H指数',
+    'DJI': '道琼斯工业指数',
+    'SPX': '标普500指数',
+    'IXIC': '纳斯达克指数',
+    'FTSE': '富时100指数',
+    'FCHI': '法国CAC40指数',
+    'GDAXI': '德国DAX指数',
+    'N225': '日经225指数',
+    'KS11': '韩国综合指数',
+    'AS51': '澳大利亚标普200指数',
+    'SENSEX': '印度孟买SENSEX指数',
+    'IBOVESPA': '巴西IBOVESPA指数',
+    'RTS': '俄罗斯RTS指数',
+    'TWII': '台湾加权指数',
+    'CKLSE': '马来西亚指数',
+    'SPTSX': '加拿大S&P/TSX指数',
+    'CSX5P': 'STOXX欧洲50指数',
+    'RUT': '罗素2000指数'
+}
+
 class SYMBOL_SEARCH_RESULT(TypedDict):
     type: Literal['stock', 'index', 'etf', 'unknown']
     symbol: str
@@ -101,6 +125,10 @@ def symbol_search(
         ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': keyword}
     
     # Try to search in indexes
+    elif keyword in global_index_map or keyword in global_index_map.values():
+        if keyword in global_index_map.values():
+            keyword = [k for k, v in global_index_map.items() if v == keyword][0]
+        ret = {'type': 'index', 'symbol': keyword, 'name': global_index_map[keyword]}
     elif keyword and keyword in index_basic()['ts_code'].values:
         res = index_basic()[index_basic()['ts_code'] == keyword].iloc[0]
         ret = {'type': 'index', 'symbol': keyword, 'name': res['name']}
