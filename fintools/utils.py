@@ -123,9 +123,17 @@ def symbol_search(
     elif keyword and keyword in stock_basic()['name'].values:
         res = stock_basic()[stock_basic()['name'] == keyword].iloc[0]
         ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': keyword}
+    else:
+        res_df = pro().stock_basic(ts_code=keyword)
+        if res_df.empty: res_df = pro().stock_basic(name=keyword)
+        if not res_df.empty:
+            res = res_df.iloc[0]
+            ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name']}
+            global _stock_basic
+            _stock_basic = pd.concat([stock_basic(), res_df], ignore_index=True)
     
     # Try to search in indexes
-    elif keyword in global_index_map or keyword in global_index_map.values():
+    if keyword in global_index_map or keyword in global_index_map.values():
         if keyword in global_index_map.values():
             keyword = [k for k, v in global_index_map.items() if v == keyword][0]
         ret = {'type': 'index', 'symbol': keyword, 'name': global_index_map[keyword]}
@@ -135,6 +143,14 @@ def symbol_search(
     elif keyword and keyword in index_basic()['name'].values:
         res = index_basic()[index_basic()['name'] == keyword].iloc[0]
         ret = {'type': 'index', 'symbol': res['ts_code'], 'name': keyword}
+    else:
+        res_df = pro().index_basic(ts_code=keyword)
+        if res_df.empty: res_df = pro().index_basic(name=keyword)
+        if not res_df.empty:
+            res = res_df.iloc[0]
+            ret = {'type': 'index', 'symbol': res['ts_code'], 'name': res['name']}
+            global _index_basic
+            _index_basic = pd.concat([index_basic(), res_df], ignore_index=True)
     
     # # Try to fetch eastmoney
     # if not ret:
@@ -155,7 +171,7 @@ def symbol_search(
     #     except Exception as e:
     #         logger.debug(f"Failed to fetch symbol info from eastmoney for keyword {keyword}: {e}")
 
-    elif not ret:
+    if not ret:
         try:
             ChoiceDataSource = importlib.import_module("fintools.data_sources.fin_history.choice").ChoiceDataSource
             with ChoiceDataSource.borrow_choice(timeout=timeout) as choice:
