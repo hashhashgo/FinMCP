@@ -32,7 +32,8 @@ class ChoiceDataSource(OHLCDataSource):
         table_basename=name,
         db_path=os.getenv("FINTOOLS_DB", ""),
         key_fields=("symbol", "freq"),
-        except_fields=("type",)
+        except_fields=("type",),
+        missing_threshold=5
     )
     def history(self, symbol: str, type: UnderlyingType = UnderlyingType.UNKNOWN, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         yf_freq = self._map_frequency(freq)
