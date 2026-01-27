@@ -71,8 +71,6 @@ class ChoiceDataSource(OHLCDataSource):
             cls.choice.start(f"ForceLogin=1,UserName={os.getenv('CHOICE_USERNAME','')},Password={os.getenv('CHOICE_PASSWORD','')}")
         if hasattr(cls, 'release_timer'):
             cls.release_timer.cancel()
-        cls.release_timer = Timer(release_after, cls._release)
-        cls.release_timer.start()
         
         try:
             if cls.lock.acquire(timeout=timeout):
@@ -83,6 +81,8 @@ class ChoiceDataSource(OHLCDataSource):
             raise e
         finally:
             cls.lock.release()
+            cls.release_timer = Timer(release_after, cls._release)
+            cls.release_timer.start()
 
     def subscribe(self, symbol: str, interval: str, callback: Callable) -> None:
         raise NotImplementedError("Yahoo Finance does not support real-time data subscription")
