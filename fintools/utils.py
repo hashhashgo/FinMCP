@@ -112,6 +112,7 @@ _nanhua_codes: pd.DataFrame | None = None
 _nanhua_category: Dict = {}
 def symbol_search_all(
     keyword: Annotated[str, "The symbol code or name to search for."] = "",
+    strict: Annotated[bool, "Whether to perform a strict search. If True, only exact matches will be returned."] = True,
     timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
 ) -> List[SYMBOL_SEARCH_RESULT]:
     assert keyword, "Either symbol or name must be provided."
@@ -185,11 +186,13 @@ def symbol_search_all(
             res = _nanhua_codes[_nanhua_codes['name'] == keyword].iloc[0]
             ret.append({'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'})
     
-    res = ef.utils.search_quote(keyword.split('.')[0])
+    res = ef.utils.search_quote(keyword.split('.')[0], count=200)
     if res:
         if not isinstance(res, list):
             res = [res]
         for r in res:
+            if strict and keyword not in (r.code, r.name):
+                continue
             code = r.code
             name = r.name
             if r.classify == 'Fund':
@@ -208,9 +211,10 @@ def symbol_search_all(
 
 def symbol_search(
     keyword: Annotated[str, "The symbol code or name to search for."] = "",
+    strict: Annotated[bool, "Whether to perform a strict search. If True, only exact matches will be returned."] = True,
     timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
 ) -> SYMBOL_SEARCH_RESULT | None:
-    results = symbol_search_all(keyword, timeout=timeout)
+    results = symbol_search_all(keyword, strict=strict, timeout=timeout)
     if results:
         return results[0]
     return None
