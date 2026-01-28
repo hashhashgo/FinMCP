@@ -131,6 +131,7 @@ class SYMBOL_SEARCH_RESULT(TypedDict):
 _symbol_search_cache: DefaultDict[str, List[SYMBOL_SEARCH_RESULT]] = defaultdict(list)
 _nanhua_codes: pd.DataFrame | None = None
 _nanhua_category: Dict = {}
+_ef_fund_cache: pd.DataFrame | None = None
 def symbol_search_all(
     keyword: Annotated[str, "The symbol code or name to search for."] = "",
     strict: Annotated[bool, "Whether to perform a strict search. If True, only exact matches will be returned."] = True,
@@ -189,13 +190,12 @@ def symbol_search_all(
     assert isinstance(res, pd.DataFrame)
     if not res.empty:
         res_ts = res.iloc[0]
-        res_ef = ef.fund.get_base_info(keyword.split('.')[0])
-        if isinstance(res_ef, pd.DataFrame) and not res_ef.empty:
-            name = res_ef.loc[0, '基金简称']
-        elif isinstance(res_ef, pd.Series) and pd.notna(res_ef['基金简称']):
-            name = res_ef['基金简称']
-        else:
-            name = "UNKNOWN"
+        global _ef_fund_cache
+        if _ef_fund_cache is None:
+            _ef_fund_cache = ef.fund.get_fund_codes()
+        res_ef = _ef_fund_cache[_ef_fund_cache['基金代码'] == keyword.split('.')[0]]
+        if res_ef.empty: name = "UNKNOWN"
+        else: name = res_ef.iloc[0]['基金简称']
         ret.append({'type': 'fund', 'symbol': res_ts['ts_code'], 'name': str(name), 'source': 'tushare'})
     
     try:
