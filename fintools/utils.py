@@ -176,7 +176,17 @@ def symbol_search_all(
             global _index_basic
             _index_basic = pd.concat([index_basic(), res_df], ignore_index=True)
     
-    res = pro().fund_daily
+    res = pro().fund_daily(ts_code=keyword, limit=1)
+    if not res.empty:
+        res_ts = res.iloc[0]
+        res_ef = ef.fund.get_base_info(keyword.split('.')[0])
+        if isinstance(res_ef, pd.DataFrame) and not res_ef.empty:
+            name = res_ef.loc[0, '基金简称']
+        elif isinstance(res_ef, pd.Series) and pd.notna(res_ef['基金简称']):
+            name = res_ef['基金简称']
+        else:
+            name = "UNKNOWN"
+        ret.append({'type': 'fund', 'symbol': res_ts['ts_code'], 'name': str(name), 'source': 'tushare'})
     
     try:
         ChoiceDataSource = importlib.import_module("fintools.data_sources.fin_history.choice").ChoiceDataSource
