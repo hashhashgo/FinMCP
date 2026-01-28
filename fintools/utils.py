@@ -229,12 +229,17 @@ def symbol_search_all(
 
 def symbol_search(
     keyword: Annotated[str, "The symbol code or name to search for."] = "",
+    source: Annotated[Literal['tushare', 'choice', 'nanhua', 'efinance', 'all'], "The data source to search in."] = 'all',
     strict: Annotated[bool, "Whether to perform a strict search. If True, only exact matches will be returned."] = True,
     timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
 ) -> SYMBOL_SEARCH_RESULT | None:
     results = symbol_search_all(keyword, strict=strict, timeout=timeout)
     if results:
-        return results[0]
+        if source == 'all': return results[0]
+        else:
+            for res in results:
+                if res['source'] == source:
+                    return res
     return None
 
 __all__ = ["_parse_datetime"]
