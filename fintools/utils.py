@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, date, timezone
 import os
+import time
 from dateutil import parser
 from typing import Annotated, Dict, List, Literal, TypedDict, DefaultDict
 from openai import api_key
@@ -58,7 +59,15 @@ def index_basic() -> pd.DataFrame:
     global _index_basic
     if _index_basic is not None:
         return _index_basic
-    df = pro().index_basic()
+    df = None
+    for _ in range(5):
+        try:
+            df = pro().index_basic()
+            break
+        except:
+            time.sleep(0.2)
+    if df is None:
+        raise RuntimeError("Failed to fetch index basic information from Tushare.")
     _index_basic = df
     return df
 
@@ -73,7 +82,14 @@ def stock_basic() -> pd.DataFrame:
     global _stock_basic
     if _stock_basic is not None:
         return _stock_basic
-    df = pro().stock_basic(list_status='L')
+    df = None
+    for _ in range(5):
+        try:
+            df = pro().stock_basic(list_status='L')
+        except:
+            time.sleep(0.2)
+    if df is None:
+        raise RuntimeError("Failed to fetch stock basic information from Tushare.")
     _stock_basic = df
     return df
 
@@ -159,6 +175,8 @@ def symbol_search_all(
             ret.append({'type': 'index', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
             global _index_basic
             _index_basic = pd.concat([index_basic(), res_df], ignore_index=True)
+    
+    res = pro().fund_daily
     
     try:
         ChoiceDataSource = importlib.import_module("fintools.data_sources.fin_history.choice").ChoiceDataSource
