@@ -3,7 +3,7 @@ from datetime import datetime, date, timezone
 import os
 import time
 from dateutil import parser
-from typing import Annotated, Dict, List, Literal, TypedDict, DefaultDict
+from typing import Annotated, Dict, List, Literal, TypedDict, DefaultDict, cast
 from openai import api_key
 import requests
 import pandas as pd
@@ -11,6 +11,9 @@ import json
 import tushare
 import efinance as ef
 from tushare.pro.client import DataApi
+import wrapt
+from wrapt.wrappers import ObjectProxy
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 import importlib
 import logging
@@ -41,11 +44,22 @@ def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
     if not isinstance(datetime_output, datetime): raise ValueError(f"String datetime format not recognized: {datetime_input}")
     return datetime_output.astimezone()
 
-_pro: DataApi | None = None
-def pro(api_key: str = os.getenv("TUSHARE_API_KEY", "")) -> DataApi:
+
+class RetryProxy(wrapt.ObjectProxy):
+    def __init__(self, wrapped):
+        super().__init__(wrapped)
+
+    def __getattr__(self, name):
+        attr = cast(ObjectProxy, super()).__getattr__(name)
+        if callable(attr):
+            return retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=0.1, min=0.1, max=2))(attr)
+        else: return attr
+
+_pro: RetryProxy | None = None
+def pro(api_key: str = os.getenv("TUSHARE_API_KEY", "")) -> RetryProxy:
     global _pro
     if not _pro:
-        _pro = tushare.pro_api(api_key)
+        _pro = RetryProxy(tushare.pro_api(api_key))
     return _pro
 
 _index_basic = None
@@ -60,13 +74,8 @@ def index_basic() -> pd.DataFrame:
     if _index_basic is not None:
         return _index_basic
     df = None
-    for _ in range(5):
-        try:
-            df = pro().index_basic()
-            break
-        except:
-            time.sleep(0.2)
-    if df is None:
+    df = pro().index_basic()
+    if df is None or not isinstance(df, pd.DataFrame):
         raise RuntimeError("Failed to fetch index basic information from Tushare.")
     _index_basic = df
     return df
@@ -83,12 +92,8 @@ def stock_basic() -> pd.DataFrame:
     if _stock_basic is not None:
         return _stock_basic
     df = None
-    for _ in range(5):
-        try:
-            df = pro().stock_basic(list_status='L')
-        except:
-            time.sleep(0.2)
-    if df is None:
+    df = pro().stock_basic(list_status='L')
+    if df is None or not isinstance(df, pd.DataFrame):
         raise RuntimeError("Failed to fetch stock basic information from Tushare.")
     _stock_basic = df
     return df
@@ -149,7 +154,9 @@ def symbol_search_all(
         ret.append({'type': 'stock', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'})
     else:
         res_df = pro().stock_basic(ts_code=keyword)
+        assert isinstance(res_df, pd.DataFrame)
         if res_df.empty: res_df = pro().stock_basic(name=keyword)
+        assert isinstance(res_df, pd.DataFrame)
         if not res_df.empty:
             res = res_df.iloc[0]
             ret.append({'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
@@ -169,7 +176,9 @@ def symbol_search_all(
         ret.append({'type': 'index', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'})
     else:
         res_df = pro().index_basic(ts_code=keyword)
+        assert isinstance(res_df, pd.DataFrame)
         if res_df.empty: res_df = pro().index_basic(name=keyword)
+        assert isinstance(res_df, pd.DataFrame)
         if not res_df.empty:
             res = res_df.iloc[0]
             ret.append({'type': 'index', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
@@ -177,6 +186,7 @@ def symbol_search_all(
             _index_basic = pd.concat([index_basic(), res_df], ignore_index=True)
     
     res = pro().fund_daily(ts_code=keyword, limit=1)
+    assert isinstance(res, pd.DataFrame)
     if not res.empty:
         res_ts = res.iloc[0]
         res_ef = ef.fund.get_base_info(keyword.split('.')[0])

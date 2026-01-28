@@ -19,6 +19,7 @@ dependencies = [
     "stockstats>=0.6.5",
     "tushare>=1.4.24",
     "tzlocal>=5.3.1",
+    "wrapt>=2.0.1",
     "yfinance>=0.2.66",
 ]
 
