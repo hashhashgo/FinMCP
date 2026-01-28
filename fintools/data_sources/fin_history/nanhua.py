@@ -27,7 +27,7 @@ class NanHuaDataSource(OHLCDataSource):
     column_names = ["date", "open", "high", "low", "close", "volume"]
 
 
-    def __init__(self, data_server_url: str = "http://localhost:13200/"):
+    def __init__(self, data_server_url: str = os.getenv("NANHUA_SERVER_URL", "http://localhost:13200/")):
         if not data_server_url.endswith('/'):
             data_server_url += '/'
         self.data_server_url = data_server_url
@@ -40,8 +40,7 @@ class NanHuaDataSource(OHLCDataSource):
         common_fields= ("freq", ),
         except_fields=("type", ),
     )
-    def history(self, symbol: str, type: UnderlyingType, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
-        assert type == UnderlyingType.COMMODITY, "NanHuaDataSource only supports commodity data"
+    def history(self, symbol: str, type: UnderlyingType = UnderlyingType.INDEX, start: Union[str, datetime, date, int] = 0, end: Union[str, datetime, date, int] = datetime.now(), freq: DataFrequency = DataFrequency.DAILY) -> pd.DataFrame:
         nh_freq = self._map_frequency(freq)
         data_raw = requests.get(f'{self.data_server_url}?ticker={symbol}&freq={nh_freq}').json()
         df = pd.DataFrame(data_raw)
@@ -55,7 +54,7 @@ class NanHuaDataSource(OHLCDataSource):
 
 
     def subscribe(self, symbol: str, interval: str, callback: Callable) -> None:
-        raise NotImplementedError("Yahoo Finance does not support real-time data subscription")
+        raise NotImplementedError("NanHuaDataSource does not support real-time data subscription")
 
     def unsubscribe(self, symbol: str, interval: str) -> None:
-        raise NotImplementedError("Yahoo Finance does not support real-time data unsubscription")
+        raise NotImplementedError("NanHuaDataSource does not support real-time data unsubscription")

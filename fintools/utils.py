@@ -101,8 +101,11 @@ class SYMBOL_SEARCH_RESULT(TypedDict):
     type: Literal['stock', 'index', 'etf', 'unknown']
     symbol: str
     name: str
+    source: Literal['tushare', 'eastmoney', 'choice', 'nanhua']
 
 _symbol_search_cache: Dict[str, SYMBOL_SEARCH_RESULT | None] = {}
+_nanhua_codes: pd.DataFrame | None = None
+_nanhua_category: Dict = {}
 def symbol_search(
     keyword: Annotated[str, "The symbol code or name to search for."] = "",
     timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
@@ -116,19 +119,19 @@ def symbol_search(
     # Try to search in stocks
     if keyword and keyword in stock_basic()['symbol'].values:
         res = stock_basic()[stock_basic()['symbol'] == keyword].iloc[0]
-        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name']}
+        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
     elif keyword and keyword in stock_basic()['ts_code'].values:
         res = stock_basic()[stock_basic()['ts_code'] == keyword].iloc[0]
-        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name']}
+        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
     elif keyword and keyword in stock_basic()['name'].values:
         res = stock_basic()[stock_basic()['name'] == keyword].iloc[0]
-        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': keyword}
+        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'}
     else:
         res_df = pro().stock_basic(ts_code=keyword)
         if res_df.empty: res_df = pro().stock_basic(name=keyword)
         if not res_df.empty:
             res = res_df.iloc[0]
-            ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name']}
+            ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
             global _stock_basic
             _stock_basic = pd.concat([stock_basic(), res_df], ignore_index=True)
     
@@ -136,19 +139,19 @@ def symbol_search(
     if keyword in global_index_map or keyword in global_index_map.values():
         if keyword in global_index_map.values():
             keyword = [k for k, v in global_index_map.items() if v == keyword][0]
-        ret = {'type': 'index', 'symbol': keyword, 'name': global_index_map[keyword]}
+        ret = {'type': 'index', 'symbol': keyword, 'name': global_index_map[keyword], 'source': 'tushare'}
     elif keyword and keyword in index_basic()['ts_code'].values:
         res = index_basic()[index_basic()['ts_code'] == keyword].iloc[0]
-        ret = {'type': 'index', 'symbol': keyword, 'name': res['name']}
+        ret = {'type': 'index', 'symbol': keyword, 'name': res['name'], 'source': 'tushare'}
     elif keyword and keyword in index_basic()['name'].values:
         res = index_basic()[index_basic()['name'] == keyword].iloc[0]
-        ret = {'type': 'index', 'symbol': res['ts_code'], 'name': keyword}
+        ret = {'type': 'index', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'}
     else:
         res_df = pro().index_basic(ts_code=keyword)
         if res_df.empty: res_df = pro().index_basic(name=keyword)
         if not res_df.empty:
             res = res_df.iloc[0]
-            ret = {'type': 'index', 'symbol': res['ts_code'], 'name': res['name']}
+            ret = {'type': 'index', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
             global _index_basic
             _index_basic = pd.concat([index_basic(), res_df], ignore_index=True)
     
@@ -177,14 +180,34 @@ def symbol_search(
             with ChoiceDataSource.borrow_choice(timeout=timeout) as choice:
                 data = choice.css(keyword, "NAME").Data
                 if keyword in data:
-                    ret = {'type': 'unknown', 'symbol': keyword, 'name': data[keyword][0]}
+                    ret = {'type': 'unknown', 'symbol': keyword, 'name': data[keyword][0], 'source': 'choice'}
         except: pass
+    
+    if not ret:
+        global _nanhua_codes, _nanhua_category
+        try:
+            if _nanhua_codes is None or _nanhua_codes.empty:
+                nanhua_server_url = os.getenv("NANHUA_SERVER_URL", "http://localhost:13200/")
+                if not nanhua_server_url.endswith("/"):
+                    nanhua_server_url = nanhua_server_url + '/'
+                all_info = requests.get(nanhua_server_url + "contracts", timeout=0.5).json()
+                _nanhua_codes = pd.DataFrame(all_info['base_info']['codes'])
+                _nanhua_category = all_info['category']
+        except: pass
+        if _nanhua_codes is not None and not _nanhua_codes.empty:
+            if keyword in _nanhua_codes['code'].values:
+                res = _nanhua_codes[_nanhua_codes['code'] == keyword].iloc[0]
+                ret = {'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'}
+            elif keyword in _nanhua_codes['name'].values:
+                res = _nanhua_codes[_nanhua_codes['name'] == keyword].iloc[0]
+                ret = {'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'}
     
     if ret:
         _symbol_search_cache[keyword] = {
             'type': ret['type'],
             'symbol': ret['symbol'],
-            'name': ret['name']
+            'name': ret['name'],
+            'source': ret['source']
         }
     else:
         _symbol_search_cache[keyword] = None
