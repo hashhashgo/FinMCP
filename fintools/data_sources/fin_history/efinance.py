@@ -34,7 +34,7 @@ class EFinanceDataSource(OHLCDataSource):
         ef_freq = int(self._map_frequency(freq))
         start_date = self._parse_datetime(start)
         end_date = self._parse_datetime(end)
-        if type in [UnderlyingType.STOCK, UnderlyingType.ETF, UnderlyingType.INDEX]:
+        if type in [UnderlyingType.STOCK, UnderlyingType.FUND, UnderlyingType.INDEX]:
             # if start_date.time() == datetime.min.time() and end_date.time() == datetime.min.time():
             #     end_date = end_date + self._datetime_shift_base(freq)
             df = ef.stock.get_quote_history(symbol, klt=ef_freq)

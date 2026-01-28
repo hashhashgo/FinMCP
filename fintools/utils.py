@@ -1,15 +1,19 @@
+from collections import defaultdict
 from datetime import datetime, date, timezone
 import os
 from dateutil import parser
-from typing import Annotated, Dict, Literal, TypedDict
+from typing import Annotated, Dict, List, Literal, TypedDict, DefaultDict
 from openai import api_key
 import requests
 import pandas as pd
 import json
 import tushare
+import efinance as ef
 from tushare.pro.client import DataApi
 
 import importlib
+import logging
+logger = logging.getLogger(__name__)
 
 def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
     datetime_output = None
@@ -98,40 +102,40 @@ global_index_map = {
 }
 
 class SYMBOL_SEARCH_RESULT(TypedDict):
-    type: Literal['stock', 'index', 'etf', 'unknown']
+    type: Literal['stock', 'index', 'fund', 'unknown']
     symbol: str
     name: str
-    source: Literal['tushare', 'eastmoney', 'choice', 'nanhua']
+    source: Literal['tushare', 'choice', 'nanhua', 'efinance']
 
-_symbol_search_cache: Dict[str, SYMBOL_SEARCH_RESULT | None] = {}
+_symbol_search_cache: DefaultDict[str, List[SYMBOL_SEARCH_RESULT]] = defaultdict(list)
 _nanhua_codes: pd.DataFrame | None = None
 _nanhua_category: Dict = {}
-def symbol_search(
+def symbol_search_all(
     keyword: Annotated[str, "The symbol code or name to search for."] = "",
     timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
-) -> SYMBOL_SEARCH_RESULT | None:
+) -> List[SYMBOL_SEARCH_RESULT]:
     assert keyword, "Either symbol or name must be provided."
     global _symbol_search_cache
     if keyword in _symbol_search_cache:
         return _symbol_search_cache[keyword]
     
-    ret = None
+    ret: List[SYMBOL_SEARCH_RESULT] = []
     # Try to search in stocks
     if keyword and keyword in stock_basic()['symbol'].values:
         res = stock_basic()[stock_basic()['symbol'] == keyword].iloc[0]
-        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
+        ret.append({'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
     elif keyword and keyword in stock_basic()['ts_code'].values:
         res = stock_basic()[stock_basic()['ts_code'] == keyword].iloc[0]
-        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
+        ret.append({'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
     elif keyword and keyword in stock_basic()['name'].values:
         res = stock_basic()[stock_basic()['name'] == keyword].iloc[0]
-        ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'}
+        ret.append({'type': 'stock', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'})
     else:
         res_df = pro().stock_basic(ts_code=keyword)
         if res_df.empty: res_df = pro().stock_basic(name=keyword)
         if not res_df.empty:
             res = res_df.iloc[0]
-            ret = {'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
+            ret.append({'type': 'stock', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
             global _stock_basic
             _stock_basic = pd.concat([stock_basic(), res_df], ignore_index=True)
     
@@ -139,78 +143,76 @@ def symbol_search(
     if keyword in global_index_map or keyword in global_index_map.values():
         if keyword in global_index_map.values():
             keyword = [k for k, v in global_index_map.items() if v == keyword][0]
-        ret = {'type': 'index', 'symbol': keyword, 'name': global_index_map[keyword], 'source': 'tushare'}
+        ret.append({'type': 'index', 'symbol': keyword, 'name': global_index_map[keyword], 'source': 'tushare'})
     elif keyword and keyword in index_basic()['ts_code'].values:
         res = index_basic()[index_basic()['ts_code'] == keyword].iloc[0]
-        ret = {'type': 'index', 'symbol': keyword, 'name': res['name'], 'source': 'tushare'}
+        ret.append({'type': 'index', 'symbol': keyword, 'name': res['name'], 'source': 'tushare'})
     elif keyword and keyword in index_basic()['name'].values:
         res = index_basic()[index_basic()['name'] == keyword].iloc[0]
-        ret = {'type': 'index', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'}
+        ret.append({'type': 'index', 'symbol': res['ts_code'], 'name': keyword, 'source': 'tushare'})
     else:
         res_df = pro().index_basic(ts_code=keyword)
         if res_df.empty: res_df = pro().index_basic(name=keyword)
         if not res_df.empty:
             res = res_df.iloc[0]
-            ret = {'type': 'index', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'}
+            ret.append({'type': 'index', 'symbol': res['ts_code'], 'name': res['name'], 'source': 'tushare'})
             global _index_basic
             _index_basic = pd.concat([index_basic(), res_df], ignore_index=True)
     
-    # # Try to fetch eastmoney
-    # if not ret:
-    #     try:
-    #         req = requests.get(f"https://search-codetable.eastmoney.com/codetable/search/web?client=web&clientType=webSuggest&clientVersion=lastest&cb=jQuery35102584463847576248_1767928521853&keyword={keyword}&pageIndex=1&pageSize=10&securityFilter=&_=1767928521870")
-    #         s = req.text
-    #         s = s[s.index('(')+1: s.rindex(')')]
-    #         data = json.loads(s)
-    #         for info in data['result']:
-    #             type_name = info['securityTypeName']
-    #             if type_name == "基金":
-    #                 name = info['shortName']
-    #                 code = info['code']
-    #                 if len(get_data("tushare", f"{code}.SH", UnderlyingType.ETF)):
-    #                     ret = {'type': 'etf', 'symbol': f"{code}.SH", 'name': name}
-    #                 elif len(get_data("tushare", f"{code}.SZ", UnderlyingType.ETF)):
-    #                     ret = {'type': 'etf', 'symbol': f"{code}.SZ", 'name': name}
-    #     except Exception as e:
-    #         logger.debug(f"Failed to fetch symbol info from eastmoney for keyword {keyword}: {e}")
-
-    if not ret:
-        try:
-            ChoiceDataSource = importlib.import_module("fintools.data_sources.fin_history.choice").ChoiceDataSource
-            with ChoiceDataSource.borrow_choice(timeout=timeout) as choice:
-                data = choice.css(keyword, "NAME").Data
-                if keyword in data:
-                    ret = {'type': 'unknown', 'symbol': keyword, 'name': data[keyword][0], 'source': 'choice'}
-        except: pass
+    try:
+        ChoiceDataSource = importlib.import_module("fintools.data_sources.fin_history.choice").ChoiceDataSource
+        with ChoiceDataSource.borrow_choice(timeout=timeout) as choice:
+            data = choice.css(keyword, "NAME").Data
+            if keyword in data:
+                ret.append({'type': 'unknown', 'symbol': keyword, 'name': data[keyword][0], 'source': 'choice'})
+    except: pass
     
-    if not ret:
-        global _nanhua_codes, _nanhua_category
-        try:
-            if _nanhua_codes is None or _nanhua_codes.empty:
-                nanhua_server_url = os.getenv("NANHUA_SERVER_URL", "http://localhost:13200/")
-                if not nanhua_server_url.endswith("/"):
-                    nanhua_server_url = nanhua_server_url + '/'
-                all_info = requests.get(nanhua_server_url + "contracts", timeout=0.5).json()
-                _nanhua_codes = pd.DataFrame(all_info['base_info']['codes'])
-                _nanhua_category = all_info['category']
-        except: pass
-        if _nanhua_codes is not None and not _nanhua_codes.empty:
-            if keyword in _nanhua_codes['code'].values:
-                res = _nanhua_codes[_nanhua_codes['code'] == keyword].iloc[0]
-                ret = {'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'}
-            elif keyword in _nanhua_codes['name'].values:
-                res = _nanhua_codes[_nanhua_codes['name'] == keyword].iloc[0]
-                ret = {'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'}
+    global _nanhua_codes, _nanhua_category
+    try:
+        if _nanhua_codes is None or _nanhua_codes.empty:
+            nanhua_server_url = os.getenv("NANHUA_SERVER_URL", "http://localhost:13200/")
+            if not nanhua_server_url.endswith("/"):
+                nanhua_server_url = nanhua_server_url + '/'
+            all_info = requests.get(nanhua_server_url + "contracts", timeout=0.5).json()
+            _nanhua_codes = pd.DataFrame(all_info['base_info']['codes'])
+            _nanhua_category = all_info['category']
+    except: pass
+    if _nanhua_codes is not None and not _nanhua_codes.empty:
+        if keyword in _nanhua_codes['code'].values:
+            res = _nanhua_codes[_nanhua_codes['code'] == keyword].iloc[0]
+            ret.append({'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'})
+        elif keyword in _nanhua_codes['name'].values:
+            res = _nanhua_codes[_nanhua_codes['name'] == keyword].iloc[0]
+            ret.append({'type': 'index', 'symbol': res['code'], 'name': res['name'], 'source': 'nanhua'})
     
-    if ret:
-        _symbol_search_cache[keyword] = {
-            'type': ret['type'],
-            'symbol': ret['symbol'],
-            'name': ret['name'],
-            'source': ret['source']
-        }
-    else:
-        _symbol_search_cache[keyword] = None
+    res = ef.utils.search_quote(keyword.split('.')[0])
+    if res:
+        if not isinstance(res, list):
+            res = [res]
+        for r in res:
+            code = r.code
+            name = r.name
+            if r.classify == 'Fund':
+                type = 'fund'
+            elif r.classify == 'Index':
+                type = 'index'
+            elif 'Stock' in r.classify:
+                type = 'stock'
+            else:
+                type = r.classify
+                logger.warning(f"Unknown classify '{r.classify}' from efinance for code '{code}'")
+            ret.append({'type': type, 'symbol': code, 'name': name, 'source': 'efinance'})
+    
+    _symbol_search_cache[keyword] = ret
     return _symbol_search_cache[keyword]
+
+def symbol_search(
+    keyword: Annotated[str, "The symbol code or name to search for."] = "",
+    timeout: Annotated[float, "Maximum time to wait for the search operation. -1 means wait indefinitely."] = -1
+) -> SYMBOL_SEARCH_RESULT | None:
+    results = symbol_search_all(keyword, timeout=timeout)
+    if results:
+        return results[0]
+    return None
 
 __all__ = ["_parse_datetime"]

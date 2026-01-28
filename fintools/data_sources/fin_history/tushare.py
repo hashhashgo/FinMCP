@@ -50,7 +50,7 @@ class TushareDataSource(OHLCDataSource):
         elif type == UnderlyingType.INDEX: return self._format_dataframe(self._history_index(symbol, start, end, freq))
         elif type == UnderlyingType.FOREX: return self._format_dataframe(self._history_forex(symbol, start, end, freq))
         elif type == UnderlyingType.COMMODITY: return self._format_dataframe(self._history_commodity(symbol, start, end, freq))
-        elif type == UnderlyingType.ETF: return self._format_dataframe(self._history_etf(symbol, start, end, freq))
+        elif type == UnderlyingType.FUND: return self._format_dataframe(self._history_etf(symbol, start, end, freq))
         else: raise NotImplementedError(f"Data type {type} not supported in Tushare")
 
     def _history_stock(self, symbol: str, start: Union[str, datetime, date, int], end: Union[str, datetime, date, int], freq: DataFrequency) -> pd.DataFrame:

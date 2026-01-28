@@ -8,12 +8,11 @@ from fintools.utils import _parse_datetime
 class UnderlyingType(Enum):
     STOCK = 'stock'
     INDEX = 'index'
-    COMMODITY = 'commodity'
     BOND = 'bond'
+    FUND = 'fund'
     FOREX = 'forex'
-    ETF = 'etf'
+    COMMODITY = 'commodity'
     CRYPTO = 'crypto'
-    OTHER = 'other'
     UNKNOWN = 'unknown'
 
 class DataFrequency(Enum):

@@ -9,7 +9,7 @@ import dotenv
 dotenv.load_dotenv()
 
 def test_get_data_tushare():
-    df_tu = get_data("tushare", "510300.SH", UnderlyingType.ETF, DataFrequency.DAILY, indicators=['macd', 'rsi', 'boll'])
+    df_tu = get_data("tushare", "510300.SH", UnderlyingType.FUND, DataFrequency.DAILY, indicators=['macd', 'rsi', 'boll'])
     assert not df_tu.empty
 
 

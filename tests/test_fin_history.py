@@ -28,7 +28,7 @@ def test_efinance_history():
     assert len(df_ef)
     df_ef = ef.history("000300", type=UnderlyingType.INDEX, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_ef)
-    df_ef = ef.history("510300", type=UnderlyingType.ETF, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
+    df_ef = ef.history("510300", type=UnderlyingType.FUND, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
     assert len(df_ef)
 
 def test_yahoo_finance_history():
