@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 from typing import Optional, Union
 
+from typing_extensions import deprecated
+
+@deprecated("InvestingComDataSource is not available now.")
 class InvestingComDataSource(OHLCDataSource):
 
     name = "investing.com"
@@ -37,7 +40,7 @@ class InvestingComDataSource(OHLCDataSource):
 
     def __init__(self) -> None:
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
             'Accept-Encoding': 'gzip, deflate',
@@ -46,8 +49,7 @@ class InvestingComDataSource(OHLCDataSource):
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-Site': 'none',
             'Sec-Fetch-User': '?1',
-            'Priority': 'u=0, i',
-            'Te': 'trailers'
+            'Priority': 'u=0, i'
         }
         self._playwright = sync_playwright().start()
         self.browser = self._playwright.firefox.launch(headless=True)

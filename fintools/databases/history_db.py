@@ -507,8 +507,8 @@ def history_cache(
             if cfg.start_col not in argmap or cfg.end_col not in argmap:
                 raise TypeError(f"Decorated function must accept parameters named '{cfg.start_col}' and '{cfg.end_col}'.")
 
-            start_dt = _parse_datetime(argmap[cfg.start_col])
-            end_dt = _parse_datetime(argmap[cfg.end_col])
+            start_dt = parse_datetime(argmap[cfg.start_col])
+            end_dt = parse_datetime(argmap[cfg.end_col])
             
             if not cfg.common_fields:
                 common_fields = {}

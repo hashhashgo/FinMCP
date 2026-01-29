@@ -26,6 +26,9 @@ def _discover_datasource_classes():
 
         full_name = f"{package_name}.{mod_name}"
         module = importlib.import_module(full_name)
+        if hasattr(module, "__deprecated__") and getattr(module, "__deprecated__"):
+            logger.info(f"Skipping deprecated module: {full_name}")
+            continue
 
         for attr_name, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, OHLCDataSource) and obj is not OHLCDataSource:

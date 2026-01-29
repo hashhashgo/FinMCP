@@ -3,7 +3,7 @@ from typing import Optional, Union
 from enum import Enum
 from datetime import datetime, date, timedelta, timezone
 
-from fintools.utils import _parse_datetime
+from fintools.utils.types import parse_datetime
 
 class UnderlyingType(Enum):
     STOCK = 'stock'
@@ -41,7 +41,7 @@ class DataSource(ABC):
 
 
     def _parse_datetime(self, datetime_input: Union[str, datetime, date, int]) -> datetime:
-        return _parse_datetime(datetime_input)
+        return parse_datetime(datetime_input)
     
     def _parse_date(self, date_input: Union[str, datetime, date, int]) -> date:
         dt = self._parse_datetime(date_input)

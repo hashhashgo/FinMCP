@@ -1,48 +1,23 @@
+from typing import Annotated, Dict, List, Literal, TypedDict, DefaultDict, Set, cast
 from collections import defaultdict
-from datetime import datetime, date, timezone
-import os
-import time
-from dateutil import parser
-from typing import Annotated, Dict, List, Literal, TypedDict, DefaultDict, cast
-from openai import api_key
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
 import requests
 import pandas as pd
-import json
+import os
 import tushare
 import efinance as ef
-from tushare.pro.client import DataApi
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tenacity import retry, stop_after_attempt, wait_exponential
 import wrapt
 from wrapt.wrappers import ObjectProxy
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 import importlib
 import logging
 logger = logging.getLogger(__name__)
 
-def _parse_datetime(datetime_input: str | datetime | date | int) -> datetime:
-    datetime_output = None
-    if isinstance(datetime_input, datetime):
-        datetime_output = datetime_input
-    elif isinstance(datetime_input, date):
-        datetime_output = datetime(datetime_input.year, datetime_input.month, datetime_input.day)
-    elif isinstance(datetime_input, int): # us or s timestamp
-        if datetime_input > 9999999999999: datetime_input = datetime_input // 1000000
-        datetime_output = datetime.fromtimestamp(datetime_input, tz=timezone.utc)
-    elif isinstance(datetime_input, str):
-        try:
-            datetime_output = parser.isoparse(datetime_input)
-        except Exception:
-            pass
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y%m%d%H%M%S", "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
-            try:
-                datetime_output = datetime.strptime(datetime_input, fmt)
-                break
-            except ValueError:
-                continue
-    else:
-        raise TypeError(f"Unsupported datetime input type: {type(datetime_input)}")
-    if not isinstance(datetime_output, datetime): raise ValueError(f"String datetime format not recognized: {datetime_input}")
-    return datetime_output.astimezone()
+from .types import parse_datetime
 
 
 class RetryProxy(wrapt.ObjectProxy):
@@ -262,4 +237,91 @@ def symbol_search(
                     return res
     return None
 
-__all__ = ["_parse_datetime"]
+_index_components_cache: Dict[str, pd.DataFrame] = {}
+def index_components(
+    index_symbol: Annotated[str, "The symbol code of the index, e.g., '000905.SH' for CSI500 Index."],
+    date: Annotated[str | datetime | date | int, "The date for which to get the index components. Can be a string in 'YYYYMMDD' format, a datetime/date object, or a Unix timestamp. If not provided, uses the latest available date."] = datetime.now().astimezone()
+) -> pd.DataFrame:
+    """
+    Get the list of components for a given index symbol.
+
+    Parameters:
+    - index_symbol: str, The symbol code of the index, e.g., "000001.SH" for SSE Composite Index.
+
+    Returns:
+    A DataFrame containing the infos of component stocks.
+    """
+    global _index_components_cache
+    if index_symbol in _index_components_cache:
+        return _index_components_cache[index_symbol]
+    date = parse_datetime(date).astimezone(ZoneInfo("Asia/Shanghai")).strftime('%Y%m%d')
+    df = pro().index_weight(index_code=index_symbol, end_date=date)
+    assert isinstance(df, pd.DataFrame)
+    trade_date = df['trade_date'].max()
+    df = df[df['trade_date'] == trade_date]
+
+    stock_df = stock_basic()
+    result_df = pd.merge(df, stock_df, left_on='con_code', right_on='ts_code', how='left')
+
+    _index_components_cache[index_symbol] = result_df
+    return result_df
+
+
+def unpack_components(
+    index_symbols: Annotated[List[str], "The list of symbol codes of the indexes, e.g., ['000300.SH', '000905.SH']."],
+) -> Set[str]:
+    """
+    Get the list of component stock names for given index symbols.
+
+    Parameters:
+    - index_symbol: str, The symbol code of the index, e.g., "000001.SH" for SSE Composite Index.
+
+    Returns:
+    A set of names of component stocks.
+    """
+    components = set()
+    with ThreadPoolExecutor() as executor:
+        futures = [ executor.submit(index_components, symbol) for symbol in index_symbols ]
+        for future in as_completed(futures):
+            res = future.result()
+            components.update(res['con_code'].tolist())
+    stock_basic_df = stock_basic()
+    all_names = set(stock_basic_df[stock_basic_df['ts_code'].isin(components)]['name'].tolist())
+    logger.debug(f"Total {len(all_names)} unique components found for indexes {index_symbols}.")
+    return all_names
+
+def unpack_everything(
+    keywords: Annotated[List[str], "The list of symbol codes or names of stocks/indexes, e.g., ['000001.SH', '上证指数']." ] ,
+) -> Set[str]:
+    """
+    Get the list of stock names for given symbol codes or names of stocks/indexes.
+
+    Parameters:
+    - keywords: List[str], The list of symbol codes or names of stocks/indexes.
+
+    Returns:
+    A set of names of stocks.
+    """
+    all_names = set()
+    index_symbols = []
+    for keyword in keywords:
+        res = symbol_search(keyword)
+        if not res:
+            all_names.add(keyword) # Try to search by the keyword itself
+        elif res['type'] == 'stock' or res['type'] == 'etf':
+            all_names.add(res['name'])
+        elif res['type'] == 'index':
+            index_symbols.append(res['symbol'])
+            all_names.add(res['name']) # Also add the index name
+        else:
+            raise ValueError(f"Unknown type '{res['type']}' for symbol '{keyword}'.")
+    if index_symbols:
+        all_names.update(unpack_components(index_symbols))
+    logger.debug(f"Total {len(all_names)} unique names found for keywords {keywords}.")
+    return all_names
+
+__all__ = [
+    "index_basic", "stock_basic",
+    "symbol_search", "symbol_search_all", "SYMBOL_SEARCH_RESULT",
+    "index_components", "unpack_components", "unpack_everything",
+]

@@ -1,11 +1,12 @@
 import json
 import pandas as pd
+from pandas.core.indexes.accessors import DatetimeProperties
 import tzlocal
-from hashlib import sha1
 from typing import Dict, Optional, Any
 from datetime import datetime, date, timezone
+from typing import cast
 
-from fintools.utils import _parse_datetime
+from fintools.utils.types import parse_datetime
 
 def _python_type_to_sqlite_type(py_type: str) -> str:
     if py_type in ["int", "bool"]:
@@ -76,7 +77,7 @@ def _json_serialize(obj: Any) -> str:
 def _pandas_value_to_sqlite_value(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].dt.tz_convert("UTC").dt.tz_localize(None).astype('datetime64[us]').astype('int64')
+            df[col] = cast(DatetimeProperties, df[col].dt).tz_convert("UTC").dt.tz_localize(None).astype('datetime64[us]').astype('int64')
         elif pd.api.types.is_bool_dtype(df[col]):
             df[col] = df[col].astype(int)
         elif df[col].dtype == 'object':
@@ -106,5 +107,5 @@ __all__ = [
     "_json_serialize",
     "_pandas_value_to_sqlite_value",
     "_sqlite_value_to_pandas_value",
-    "_parse_datetime",
+    "parse_datetime",
 ]

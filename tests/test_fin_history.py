@@ -38,12 +38,12 @@ def test_yahoo_finance_history():
     df_yf = yf.history("AAAA", type=UnderlyingType.STOCK, start=0, end=datetime.now(), freq=DataFrequency.MINUTE60)
     assert len(df_yf)
 
-def test_investing_history():
-    ic = DATASOURCES['investing.com']()
-    df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
-    assert len(df_ic)
-    df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=0, end=datetime.now(), freq=DataFrequency.MINUTE60)
-    assert len(df_ic)
+# def test_investing_history():
+#     ic = DATASOURCES['investing.com']()
+#     df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=0, end=datetime.now(), freq=DataFrequency.DAILY)
+#     assert len(df_ic)
+#     df_ic = ic.history("usd-cny", type=UnderlyingType.FOREX, start=0, end=datetime.now(), freq=DataFrequency.MINUTE60)
+#     assert len(df_ic)
 
 def test_nanhua_history():
     nh = DATASOURCES['nanhua']()
@@ -53,8 +53,8 @@ def test_nanhua_history():
     assert len(df_nh)
 
 if __name__ == "__main__":
+    # test_investing_history()
     test_choice_history()
     test_tushare_history()
     test_yahoo_finance_history()
-    test_investing_history()
     test_nanhua_history()
